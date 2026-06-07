@@ -50,10 +50,11 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
     img = cv2.resize(original_img, (1200, int(original_img.shape[0] * ratio)))
     debug_img = img.copy()
 
-    # --- 1. Color Separation ---
     red_channel = img[:, :, 2]
     red_channel = cv2.GaussianBlur(red_channel, (5, 5), 0)
     _, pen_marks = cv2.threshold(red_channel, 130, 255, cv2.THRESH_BINARY_INV)
+    # Dilate pen marks to make thin 'X' lines thicker and easier to count
+    pen_marks = cv2.dilate(pen_marks, np.ones((3,3), np.uint8), iterations=1)
 
     green_channel = img[:, :, 1]
     green_channel = cv2.GaussianBlur(green_channel, (5, 5), 0)
@@ -74,8 +75,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
                 candidate_boxes.append((x, y, w, h))
                 
     if candidate_boxes:
-        # Sort by Y coordinate (top to bottom)
-        candidate_boxes.sort(key=lambda b: b[1])
+        # Sort by Area (largest first) to find the PILIHAN GANDA box, ignoring smaller headers
+        candidate_boxes.sort(key=lambda b: b[2] * b[3], reverse=True)
         best_box = candidate_boxes[0]
 
     if best_box is None:
@@ -117,7 +118,7 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             pixel_counts = []
             for opt_idx in range(5):
                 opt_x = opt_start_x + (opt_idx * opt_w)
-                margin = 5
+                margin = 2
                 roi_x1 = opt_x + margin
                 roi_y1 = cell_y + margin
                 roi_x2 = opt_x + opt_w - margin
