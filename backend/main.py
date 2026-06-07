@@ -50,13 +50,10 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
     img = cv2.resize(original_img, (1200, int(original_img.shape[0] * ratio)))
     debug_img = img.copy()
 
-    # Naikkan threshold ke 160 untuk mendeteksi tinta biru muda/samar
+    # Ekstrak channel merah untuk memisahkan tinta dari kertas dan cetakan merah
     red_channel = img[:, :, 2]
-    _, pen_marks = cv2.threshold(red_channel, 160, 255, cv2.THRESH_BINARY_INV)
-    
-    # Hapus bintik-bintik noise (bercak tinta cetak) agar tidak memicu false positive
-    noise_kernel = np.ones((3, 3), np.uint8)
-    pen_marks = cv2.morphologyEx(pen_marks, cv2.MORPH_OPEN, noise_kernel)
+    # Threshold 150: sangat sensitif terhadap tinta pulpen tipis/biru muda
+    _, pen_marks = cv2.threshold(red_channel, 150, 255, cv2.THRESH_BINARY_INV)
     
     # Dilate pen marks to make thin 'X' lines thicker and easier to count
     pen_marks = cv2.dilate(pen_marks, np.ones((3,3), np.uint8), iterations=1)
@@ -153,7 +150,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             max_pixels = max(pixel_counts)
             student_ans = None
             
-            if max_pixels > 20:
+            # Sangat sensitif: hanya butuh 15 piksel untuk mengenali silangan
+            if max_pixels > 15:
                 best_opt_idx = pixel_counts.index(max_pixels)
                 student_ans = options_letters[best_opt_idx]
                 
