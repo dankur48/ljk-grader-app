@@ -178,8 +178,12 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
                 "is_correct": is_correct
             })
 
+    debug_base64 = None
     if save_debug:
-        cv2.imwrite("debug.jpg", debug_img)
+        _, buffer = cv2.imencode('.jpg', debug_img)
+        import base64
+        b64_str = base64.b64encode(buffer).decode('utf-8')
+        debug_base64 = f"data:image/jpeg;base64,{b64_str}"
         
     final_image_url = None
     if save_permanent:
@@ -210,7 +214,7 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         "status": "success",
         "score": score,
         "details": results,
-        "debug_url": f"{os.environ.get('HOST_URL', 'http://localhost:8000')}/api/debug-image" if save_debug else None,
+        "debug_url": debug_base64,
         "image_url": final_image_url
     }
 
