@@ -115,8 +115,18 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             cell_x = x + (col * col_w)
             cell_y = grid_y + (row * row_h)
             
-            opt_start_x = cell_x + int(col_w * 0.27)
-            opt_area_w = int(col_w * 0.65)
+            # Sesuaikan titik mulai abjad (Sumbu X) berdasarkan jumlah digit angka soal
+            # Kolom 1 (Soal 1-5): Angka 1 digit, huruf A lebih ke kiri
+            # Kolom 3 & 4 (Soal 11-20): Angka 2 digit, huruf A terdorong ke kanan
+            if col == 0:
+                start_pct = 0.18
+            elif col == 1:
+                start_pct = 0.22
+            else:
+                start_pct = 0.26
+                
+            opt_start_x = cell_x + int(col_w * start_pct)
+            opt_area_w = int(col_w * 0.72)
             opt_w = opt_area_w // 5
             
             pixel_counts = []
