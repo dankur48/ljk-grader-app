@@ -119,11 +119,10 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             for opt_idx in range(5):
                 opt_x = opt_start_x + (opt_idx * opt_w)
                 margin_x = 2
-                margin_y = int(row_h * 0.15)
                 roi_x1 = opt_x + margin_x
-                roi_y1 = cell_y + margin_y
+                roi_y1 = cell_y + 2
                 roi_x2 = opt_x + opt_w - margin_x
-                roi_y2 = cell_y + row_h - margin_y
+                roi_y2 = cell_y + int(row_h * 0.7)
                 
                 roi_x2 = min(roi_x2, img.shape[1])
                 roi_y2 = min(roi_y2, img.shape[0])
@@ -143,7 +142,7 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
                 
                 chosen_x = opt_start_x + (best_opt_idx * opt_w) + margin_x
                 # Kotak merah tua untuk jawaban siswa
-                cv2.rectangle(debug_img, (chosen_x, cell_y + margin_y), (chosen_x + opt_w - margin_x*2, cell_y + row_h - margin_y), (0, 0, 255), 3)
+                cv2.rectangle(debug_img, (chosen_x, cell_y + 2), (chosen_x + opt_w - margin_x*2, cell_y + int(row_h * 0.7)), (0, 0, 255), 3)
 
             correct_ans = answer_key.get(str(q_num), 'A')
             is_correct = (student_ans == correct_ans)
@@ -154,7 +153,7 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
                     correct_opt_idx = options_letters.index(correct_ans)
                     correct_x = opt_start_x + (correct_opt_idx * opt_w) + margin_x
                     # Kotak hijau tebal untuk kunci jawaban
-                    cv2.rectangle(debug_img, (correct_x, cell_y + margin_y), (correct_x + opt_w - margin_x*2, cell_y + row_h - margin_y), (0, 255, 0), 3)
+                    cv2.rectangle(debug_img, (correct_x, cell_y + 2), (correct_x + opt_w - margin_x*2, cell_y + int(row_h * 0.7)), (0, 255, 0), 3)
             
             if is_correct:
                 score += float(points_per_question)
