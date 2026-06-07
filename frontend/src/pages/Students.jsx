@@ -78,6 +78,12 @@ export default function Students() {
     }
   };
 
+  const handleDeleteAll = () => {
+    if (window.confirm(`Apakah Anda SANGAT YAKIN ingin menghapus SEMUA data murid di kelas ${selectedClass}? Tindakan ini tidak dapat dibatalkan.`)) {
+      setStudents(students.filter(s => s.kelas !== selectedClass));
+    }
+  };
+
   const downloadExcelTemplate = () => {
     if (!selectedClass) {
       alert("Pilih kelas terlebih dahulu!");
@@ -123,7 +129,8 @@ export default function Students() {
         const data = XLSX.utils.sheet_to_json(ws);
         
         if (data.length > 0) {
-          let updatedStudents = [...students];
+          const overwrite = window.confirm("Apakah Anda ingin menimpa (menghapus) data murid lama di kelas ini dengan data dari Excel? \n\n[OK] = Hapus yang lama & ganti dengan yang baru.\n[Cancel] = Hanya gabungkan/perbarui data yang sudah ada.");
+          let updatedStudents = overwrite ? students.filter(s => s.kelas !== selectedClass) : [...students];
           let addedCount = 0;
 
           data.forEach((row, index) => {
@@ -226,6 +233,10 @@ export default function Students() {
             <button className="btn-primary" onClick={() => { setIsAddingStudent(!isAddingStudent); setEditingId(null); setAbsen(''); setNama(''); }} style={{ margin: 0, width: 'auto' }}>
               <Plus size={18} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> 
               Tambah Manual
+            </button>
+            <button className="btn-secondary" onClick={handleDeleteAll} style={{ margin: 0, width: 'auto', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--danger)', color: 'var(--danger)' }} title="Hapus seluruh murid di kelas ini">
+              <Trash2 size={18} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> 
+              Hapus Semua
             </button>
           </div>
         </div>
