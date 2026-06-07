@@ -89,15 +89,13 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
     
     cv2.rectangle(debug_img, (x, y), (x+w, y+h), (255, 0, 0), 3)
 
-    # --- 3. Geometric Slicing ---
-    header_offset = int(h * 0.18)
-    grid_y = y + header_offset
-    grid_h = h - header_offset
-    
-    cv2.line(debug_img, (x, grid_y), (x+w, grid_y), (255, 255, 0), 2)
-
+    # --- 3. Slice into options ---
+    grid_y = y
+    grid_h = h
     col_w = w // 4
-    row_h = grid_h // 5
+    # Bounding box sekarang mencakup keseluruhan kotak merah, termasuk header "PILIHAN GANDA"
+    # Tinggi kotak dibagi 6 (1 bagian header + 5 bagian soal)
+    row_h = grid_h // 6
     
     results = []
     score = 0
@@ -112,7 +110,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
                 continue
                 
             cell_x = x + (col * col_w)
-            cell_y = grid_y + (row * row_h)
+            # Mulai dari row+1 karena row 0 adalah area header "PILIHAN GANDA"
+            cell_y = grid_y + ((row + 1) * row_h)
             
             # Sesuaikan titik mulai abjad (Sumbu X) berdasarkan jumlah digit angka soal
             # Kolom 1 (Soal 1-5): Angka 1 digit, huruf A lebih ke kiri
