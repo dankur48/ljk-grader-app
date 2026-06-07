@@ -92,6 +92,41 @@ export default function Students() {
     }
   };
 
+  const handleResetNilai = () => {
+    if (!selectedMapel) return;
+    if (window.confirm(`Apakah Anda yakin ingin MENGHAPUS SELURUH NILAI (PG & Essay) mata pelajaran ${selectedMapel} untuk kelas ${selectedClass}? Data scan juga akan terhapus.`)) {
+      const updated = students.map(s => {
+        if (s.kelas === selectedClass && s.nilai && s.nilai[selectedMapel]) {
+          const newNilai = { ...s.nilai };
+          delete newNilai[selectedMapel];
+          return { ...s, nilai: newNilai };
+        }
+        return s;
+      });
+      setStudents(updated);
+    }
+  };
+
+  const updateScore = (studentId, field, value) => {
+    if (!selectedMapel) return;
+    const numValue = value === '' ? 0 : parseFloat(value) || 0;
+    setStudents(students.map(s => {
+      if (s.id === studentId) {
+        let currentNilai = s.nilai?.[selectedMapel];
+        if (typeof currentNilai !== 'object' || currentNilai === null) {
+          currentNilai = { score_pg: parseFloat(currentNilai) || 0, score_essay: 0 };
+        }
+        
+        const newNilai = { ...currentNilai, [field]: numValue };
+        newNilai.score_pg = newNilai.score_pg ?? newNilai.score ?? 0;
+        newNilai.score = (parseFloat(newNilai.score_pg) || 0) + (parseFloat(newNilai.score_essay) || 0);
+        
+        return { ...s, nilai: { ...s.nilai, [selectedMapel]: newNilai } };
+      }
+      return s;
+    }));
+  };
+
   const downloadExcelTemplate = () => {
     if (!selectedClass) {
       alert("Pilih kelas terlebih dahulu!");
@@ -246,6 +281,10 @@ export default function Students() {
               <Trash2 size={18} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> 
               Hapus Semua
             </button>
+            <button className="btn-secondary" onClick={handleResetNilai} style={{ margin: 0, width: 'auto', background: 'rgba(245, 158, 11, 0.1)', borderColor: 'var(--warning)', color: 'var(--warning)' }} title="Reset nilai mapel ini">
+              <X size={18} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> 
+              Reset Nilai
+            </button>
           </div>
         </div>
       )}
@@ -272,21 +311,29 @@ export default function Students() {
           <table className="data-table">
             <thead>
               <tr>
-                <th width="15%">No. Absen</th>
+                <th width="10%">No. Absen</th>
                 <th>Nama Siswa</th>
-                <th width="20%">Nilai {selectedMapel && `(${selectedMapel})`}</th>
+                <th width="15%">Nilai PG</th>
+                <th width="15%">Nilai Essay</th>
+                <th width="15%">Total Nilai</th>
                 <th width="15%">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {displayedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Belum ada murid di kelas {selectedClass}.</td>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Belum ada murid di kelas {selectedClass}.</td>
                 </tr>
               ) : (
                 displayedStudents.map((student) => {
                   const nilaiData = selectedMapel ? (student.nilai?.[selectedMapel]) : null;
-                  const score = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.score : nilaiData;
+                  const isObject = typeof nilaiData === 'object' && nilaiData !== null;
+                  
+                  const score_pg = isObject ? (nilaiData.score_pg ?? nilaiData.score ?? 0) : (parseFloat(nilaiData) || 0);
+                  const score_essay = isObject ? (nilaiData.score_essay ?? 0) : 0;
+                  const total_score = isObject && nilaiData.score !== undefined ? nilaiData.score : score_pg + score_essay;
+                  
+                  const hasData = nilaiData !== undefined && nilaiData !== null && nilaiData !== '';
                   
                   return (
                     <tr key={student.id}>
@@ -294,7 +341,7 @@ export default function Students() {
                         <>
                           <td><input type="text" value={absen} onChange={(e) => setAbsen(e.target.value)} style={{ padding: '0.5rem', width: '100%' }} /></td>
                           <td><input type="text" value={nama} onChange={(e) => setNama(e.target.value)} style={{ padding: '0.5rem', width: '100%' }} /></td>
-                          <td className="text-muted">Sedang mengedit...</td>
+                          <td colSpan="3" className="text-muted" style={{ textAlign: 'center' }}>Sedang mengedit identitas...</td>
                           <td>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <button onClick={handleSaveEdit} className="btn-secondary" style={{ padding: '0.5rem', background: 'rgba(16, 185, 129, 0.2)', borderColor: 'var(--success)' }}><Check size={16} color="var(--success)" /></button>
@@ -305,18 +352,44 @@ export default function Students() {
                       ) : (
                         <>
                           <td>{student.absen}</td>
-                          <td>{student.nama}</td>
-                          <td onClick={() => { if (nilaiData) setReportModalStudent(student); }} style={{ cursor: nilaiData ? 'pointer' : 'default' }}>
-                            {score !== undefined && score !== null ? (
-                              <span style={{ fontWeight: 'bold', color: score >= 75 ? 'var(--success)' : 'var(--danger)', fontSize: '1.1rem' }}>{score}</span>
+                          <td onClick={() => { if (hasData) setReportModalStudent(student); }} style={{ cursor: hasData ? 'pointer' : 'default', textDecoration: hasData ? 'underline' : 'none' }} title="Klik untuk lihat rincian scan">
+                            {student.nama}
+                          </td>
+                          
+                          <td>
+                            <input 
+                              type="number" 
+                              value={hasData ? score_pg : ''} 
+                              onChange={(e) => updateScore(student.id, 'score_pg', e.target.value)}
+                              placeholder="-"
+                              className="form-control"
+                              style={{ width: '80px', padding: '0.25rem', margin: 0, textAlign: 'center', background: 'transparent', border: '1px solid var(--glass-border)', color: 'white' }}
+                            />
+                          </td>
+                          
+                          <td>
+                            <input 
+                              type="number" 
+                              value={hasData ? score_essay : ''} 
+                              onChange={(e) => updateScore(student.id, 'score_essay', e.target.value)}
+                              placeholder="-"
+                              className="form-control"
+                              style={{ width: '80px', padding: '0.25rem', margin: 0, textAlign: 'center', background: 'transparent', border: '1px solid var(--glass-border)', color: 'white' }}
+                            />
+                          </td>
+                          
+                          <td>
+                            {hasData ? (
+                              <span style={{ fontWeight: 'bold', color: total_score >= 75 ? 'var(--success)' : 'var(--danger)', fontSize: '1.2rem' }}>{total_score}</span>
                             ) : (
                               <span className="text-muted">-</span>
                             )}
                           </td>
+                          
                           <td>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button onClick={() => handleEdit(student)} className="btn-secondary" style={{ padding: '0.5rem' }} title="Edit"><Edit2 size={16} /></button>
-                              <button onClick={() => handleDelete(student.id)} className="btn-secondary" style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--danger)' }} title="Hapus"><Trash2 size={16} color="var(--danger)" /></button>
+                              <button onClick={() => handleEdit(student)} className="btn-secondary" style={{ padding: '0.5rem' }} title="Edit Identitas"><Edit2 size={16} /></button>
+                              <button onClick={() => handleDelete(student.id)} className="btn-secondary" style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--danger)' }} title="Hapus Siswa"><Trash2 size={16} color="var(--danger)" /></button>
                             </div>
                           </td>
                         </>
@@ -366,7 +439,11 @@ export default function Students() {
               return (
                 <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: '300px' }}>
-                    <h3 style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}><span>Nilai Akhir:</span><span style={{ color: nd.score >= 75 ? 'var(--success)' : 'var(--danger)', fontSize: '1.5rem' }}>{nd.score}</span></h3>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Nilai Pilihan Ganda:</span><strong>{nd.score_pg ?? nd.score ?? 0}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Nilai Essay:</span><strong>{nd.score_essay ?? 0}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--glass-border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}><span>Total Nilai Akhir:</span><span style={{ color: nd.score >= 75 ? 'var(--success)' : 'var(--danger)', fontSize: '1.5rem', fontWeight: 'bold' }}>{nd.score}</span></div>
+                    </div>
                     <div style={{ maxHeight: '50vh', overflowY: 'auto', paddingRight: '1rem' }}>
                       <table className="data-table">
                         <thead><tr><th>No</th><th>Jwb</th><th>Kunci</th><th>Hasil</th></tr></thead>

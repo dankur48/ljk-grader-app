@@ -30,9 +30,14 @@ const ClassReport = forwardRef(({ students, selectedClass, selectedMapel }, ref)
 
       {classStudents.map((student, index) => {
         const nilaiData = student.nilai?.[selectedMapel];
-        const score = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.score : (nilaiData || 0);
-        const details = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.details : [];
-        const imageUrl = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.image_url : null;
+        const isObject = typeof nilaiData === 'object' && nilaiData !== null;
+        
+        const score_pg = isObject ? (nilaiData.score_pg ?? nilaiData.score ?? 0) : (parseFloat(nilaiData) || 0);
+        const score_essay = isObject ? (nilaiData.score_essay ?? 0) : 0;
+        const score = isObject && nilaiData.score !== undefined ? nilaiData.score : score_pg + score_essay;
+        
+        const details = isObject ? nilaiData.details : [];
+        const imageUrl = isObject ? nilaiData.image_url : null;
 
         return (
           <div key={student.id} className={index > 0 ? "page-break" : ""} style={{ minHeight: '29.7cm', paddingBottom: '2cm' }}>
@@ -47,9 +52,19 @@ const ClassReport = forwardRef(({ students, selectedClass, selectedMapel }, ref)
                   <strong>Mata Pelajaran:</strong> <span>{selectedMapel}</span>
                 </div>
               </div>
-              <div style={{ textAlign: 'center', border: '2px solid black', padding: '10px 20px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 'bold' }}>NILAI AKHIR</div>
-                <div style={{ fontSize: '36px', fontWeight: 'bold', color: score >= 75 ? 'green' : 'red' }}>{score}</div>
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <div style={{ textAlign: 'center', border: '1px solid #ccc', padding: '10px', borderRadius: '8px', minWidth: '80px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#666' }}>PG</div>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{score_pg}</div>
+                </div>
+                <div style={{ textAlign: 'center', border: '1px solid #ccc', padding: '10px', borderRadius: '8px', minWidth: '80px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#666' }}>ESSAY</div>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{score_essay}</div>
+                </div>
+                <div style={{ textAlign: 'center', border: '2px solid black', padding: '10px 20px', borderRadius: '8px', minWidth: '100px', background: '#f8f8f8' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold' }}>TOTAL</div>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: score >= 75 ? 'green' : 'red' }}>{score}</div>
+                </div>
               </div>
             </div>
 
