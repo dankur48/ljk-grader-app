@@ -58,7 +58,11 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
 
     green_channel = img[:, :, 1]
     green_channel = cv2.GaussianBlur(green_channel, (5, 5), 0)
-    _, form_mask = cv2.threshold(green_channel, 160, 255, cv2.THRESH_BINARY_INV)
+    _, form_mask = cv2.threshold(green_channel, 180, 255, cv2.THRESH_BINARY_INV)
+    
+    # Hubungkan garis merah yang terputus karena kualitas foto/cahaya
+    kernel = np.ones((7, 7), np.uint8)
+    form_mask = cv2.morphologyEx(form_mask, cv2.MORPH_CLOSE, kernel)
 
     # --- 2. Find the "PILIHAN GANDA" grid ---
     contours, _ = cv2.findContours(form_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -111,8 +115,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             cell_x = x + (col * col_w)
             cell_y = grid_y + (row * row_h)
             
-            opt_start_x = cell_x + int(col_w * 0.35)
-            opt_area_w = int(col_w * 0.55)
+            opt_start_x = cell_x + int(col_w * 0.27)
+            opt_area_w = int(col_w * 0.65)
             opt_w = opt_area_w // 5
             
             pixel_counts = []
