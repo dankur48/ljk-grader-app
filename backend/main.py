@@ -141,9 +141,9 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
                 best_opt_idx = pixel_counts.index(max_pixels)
                 student_ans = options_letters[best_opt_idx]
                 
-                chosen_x = opt_start_x + (best_opt_idx * opt_w) + margin
+                chosen_x = opt_start_x + (best_opt_idx * opt_w) + margin_x
                 # Kotak merah tua untuk jawaban siswa
-                cv2.rectangle(debug_img, (chosen_x, cell_y + margin), (chosen_x + opt_w - margin*2, cell_y + row_h - margin), (0, 0, 255), 3)
+                cv2.rectangle(debug_img, (chosen_x, cell_y + margin_y), (chosen_x + opt_w - margin_x*2, cell_y + row_h - margin_y), (0, 0, 255), 3)
 
             correct_ans = answer_key.get(str(q_num), 'A')
             is_correct = (student_ans == correct_ans)
@@ -152,9 +152,9 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             if not is_correct:
                 if correct_ans in options_letters:
                     correct_opt_idx = options_letters.index(correct_ans)
-                    correct_x = opt_start_x + (correct_opt_idx * opt_w) + margin
+                    correct_x = opt_start_x + (correct_opt_idx * opt_w) + margin_x
                     # Kotak hijau tebal untuk kunci jawaban
-                    cv2.rectangle(debug_img, (correct_x, cell_y + margin), (correct_x + opt_w - margin*2, cell_y + row_h - margin), (0, 255, 0), 3)
+                    cv2.rectangle(debug_img, (correct_x, cell_y + margin_y), (correct_x + opt_w - margin_x*2, cell_y + row_h - margin_y), (0, 255, 0), 3)
             
             if is_correct:
                 score += float(points_per_question)
