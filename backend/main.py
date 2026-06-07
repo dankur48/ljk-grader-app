@@ -9,6 +9,9 @@ import uuid
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+import google.generativeai as genai
+from PIL import Image
+import json
 
 # Konfigurasi Cloudinary otomatis via environment variable CLOUDINARY_URL
 # Jika tidak ada, fungsi upload ke cloudinary akan dilewati
@@ -37,7 +40,7 @@ async def get_debug_image():
         return FileResponse("debug.jpg")
     return JSONResponse(content={"error": "Debug image not found"}, status_code=404)
 
-def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True, save_permanent=True):
+def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True, save_permanent=True, gemini_api_key=None):
     # Load image
     nparr = np.frombuffer(image_bytes, np.uint8)
     original_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -91,86 +94,58 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
     
     cv2.rectangle(debug_img, (x, y), (x+w, y+h), (255, 0, 0), 3)
 
-    # --- 3. Slice into options ---
-    grid_y = y
-    grid_h = h
-    col_w = w // 4
-    # Bounding box sekarang mencakup keseluruhan kotak merah, termasuk header "PILIHAN GANDA"
-    # Tinggi kotak dibagi 6 (1 bagian header + 5 bagian soal)
-    row_h = grid_h // 6
+    # --- 3. Potong gambar untuk Gemini ---
+    margin = 10
+    crop_y1 = max(0, y - margin)
+    crop_y2 = min(img.shape[0], y + h + margin)
+    crop_x1 = max(0, x - margin)
+    crop_x2 = min(img.shape[1], x + w + margin)
+    
+    cropped_img = img[crop_y1:crop_y2, crop_x1:crop_x2]
+    
+    api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
     
     results = []
     score = 0
-    options_letters = ['A', 'B', 'C', 'D', 'E']
     
-    for col in range(4):
-        cv2.line(debug_img, (x + col*col_w, y), (x + col*col_w, y+h), (255, 255, 0), 2)
+    if not api_key:
+        return {"error": "API Key Gemini tidak ditemukan. Silakan masukkan API Key Anda di menu aplikasi atau pengaturan server."}
         
-        for row in range(5):
-            q_num = col * 5 + row + 1
-            if q_num > 20:
-                continue
-                
-            cell_x = x + (col * col_w)
-            # Mulai dari row+1 karena row 0 adalah area header "PILIHAN GANDA"
-            cell_y = grid_y + ((row + 1) * row_h)
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Convert OpenCV image to PIL Image for Gemini
+        pil_img = Image.fromarray(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
+        
+        prompt = """
+Anda adalah sistem koreksi ujian otomatis (Grader). 
+Saya memberikan gambar bagian PILIHAN GANDA dari sebuah LJK (Lembar Jawaban Komputer).
+Tugas Anda:
+Membaca dan mengekstrak pilihan jawaban siswa untuk soal nomor 1 sampai 20.
+Siswa akan memberi tanda silang (X) atau centang (V) pada salah satu huruf A, B, C, D, atau E.
+Jika jawaban terlihat ragu-ragu, dicoret semua, atau dikosongkan, kembalikan null.
+Berikan output HANYA dalam format JSON murni dengan kunci nomor soal (string "1" sampai "20") dan nilai huruf kapital (string "A", "B", "C", "D", "E") atau null. 
+Jangan gunakan markdown formatting tambahan (seperti ```json). Output harus langsung bisa di-parse.
+Contoh output yang benar:
+{"1": "A", "2": "C", "3": null, "4": "B", "5": "E", "6": "A", "7": "D", "8": "E", "9": null, "10": "A", "11": "B", "12": "C", "13": "D", "14": "E", "15": "A", "16": "B", "17": "C", "18": "D", "19": "E", "20": "A"}
+"""
+        response = model.generate_content([prompt, pil_img])
+        text_response = response.text.strip()
+        
+        if text_response.startswith('```json'):
+            text_response = text_response[7:-3]
+        elif text_response.startswith('```'):
+            text_response = text_response[3:-3]
             
-            # Sesuaikan titik mulai abjad (Sumbu X) berdasarkan jumlah digit angka soal
-            # Kolom 1 (Soal 1-5): Angka 1 digit, huruf A lebih ke kiri
-            # Kolom 3 & 4 (Soal 11-20): Angka 2 digit, huruf A terdorong ke kanan
-            if col == 0:
-                start_pct = 0.14
-            elif col == 1:
-                start_pct = 0.18
-            else:
-                start_pct = 0.23
-                
-            opt_start_x = cell_x + int(col_w * start_pct)
-            opt_area_w = int(col_w * 0.75)
-            opt_w = opt_area_w // 5
-            
-            pixel_counts = []
-            for opt_idx in range(5):
-                opt_x = opt_start_x + (opt_idx * opt_w)
-                margin_x = 2
-                roi_x1 = opt_x + margin_x
-                roi_y1 = cell_y + 2
-                roi_x2 = opt_x + opt_w - margin_x
-                roi_y2 = cell_y + int(row_h * 0.7)
-                
-                roi_x2 = min(roi_x2, img.shape[1])
-                roi_y2 = min(roi_y2, img.shape[0])
-                
-                cv2.rectangle(debug_img, (roi_x1, roi_y1), (roi_x2, roi_y2), (0, 255, 0), 1)
-                
-                opt_roi = pen_marks[roi_y1:roi_y2, roi_x1:roi_x2]
-                pixels = cv2.countNonZero(opt_roi)
-                pixel_counts.append(pixels)
-            
-            max_pixels = max(pixel_counts)
-            student_ans = None
-            
-            # Sangat sensitif: hanya butuh 15 piksel untuk mengenali silangan
-            if max_pixels > 15:
-                best_opt_idx = pixel_counts.index(max_pixels)
-                student_ans = options_letters[best_opt_idx]
-                
-                chosen_x = opt_start_x + (best_opt_idx * opt_w) + margin_x
-                # Kotak merah tua untuk jawaban siswa
-                cv2.rectangle(debug_img, (chosen_x, cell_y + 2), (chosen_x + opt_w - margin_x*2, cell_y + int(row_h * 0.7)), (0, 0, 255), 3)
-
+        gemini_answers = json.loads(text_response.strip())
+        
+        for q_num in range(1, 21):
+            student_ans = gemini_answers.get(str(q_num))
             correct_ans = answer_key.get(str(q_num), 'A')
             is_correct = (student_ans == correct_ans)
             
-            # Jika jawaban salah atau kosong, gambar kotak HIJAU di posisi jawaban yang benar
-            if not is_correct:
-                if correct_ans in options_letters:
-                    correct_opt_idx = options_letters.index(correct_ans)
-                    correct_x = opt_start_x + (correct_opt_idx * opt_w) + margin_x
-                    # Kotak hijau tebal untuk kunci jawaban
-                    cv2.rectangle(debug_img, (correct_x, cell_y + 2), (correct_x + opt_w - margin_x*2, cell_y + int(row_h * 0.7)), (0, 255, 0), 3)
-            
-            if is_correct:
+            if is_correct and student_ans is not None:
                 score += float(points_per_question)
                 
             results.append({
@@ -179,10 +154,14 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
                 "correct_answer": correct_ans,
                 "is_correct": is_correct
             })
+            
+    except Exception as e:
+        return {"error": f"Error memproses dengan Gemini: {str(e)}"}
 
     debug_base64 = None
     if save_debug:
-        _, buffer = cv2.imencode('.jpg', debug_img)
+        # Tampilkan potongan gambar yang dikirim ke Gemini sebagai debug
+        _, buffer = cv2.imencode('.jpg', cropped_img)
         import base64
         b64_str = base64.b64encode(buffer).decode('utf-8')
         debug_base64 = f"data:image/jpeg;base64,{b64_str}"
@@ -224,7 +203,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
 async def grade_ljk(
     file: UploadFile = File(...), 
     answer_key: str = Form(...),
-    points_per_question: float = Form(5.0)
+    points_per_question: float = Form(5.0),
+    gemini_api_key: str = Form(None)
 ):
     try:
         import json
@@ -245,7 +225,7 @@ async def grade_ljk(
                 
                 # Only save debug.jpg for the very first page to save IO, but save permanent for ALL pages
                 save_debug = (page_num == 0)
-                res = process_ljk(img_bytes, key_dict, points_per_question, save_debug=save_debug, save_permanent=True)
+                res = process_ljk(img_bytes, key_dict, points_per_question, save_debug=save_debug, save_permanent=True, gemini_api_key=gemini_api_key)
                 batch_results.append({
                     "page": page_num + 1,
                     "result": res
@@ -255,7 +235,7 @@ async def grade_ljk(
             
         else:
             # Single Image
-            result = process_ljk(contents, key_dict, points_per_question, save_debug=True, save_permanent=True)
+            result = process_ljk(contents, key_dict, points_per_question, save_debug=True, save_permanent=True, gemini_api_key=gemini_api_key)
             result["type"] = "single"
             return JSONResponse(content=result)
             

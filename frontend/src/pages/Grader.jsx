@@ -22,6 +22,8 @@ export default function Grader() {
   const [selectedMapel, setSelectedMapel] = useState(Object.keys(mapelKeys)[0] || '');
   const [maxScore, setMaxScore] = useState(100);
   
+  const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem('geminiApiKey') || '');
+  
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [isPdf, setIsPdf] = useState(false);
@@ -103,6 +105,11 @@ export default function Grader() {
     }, {});
     
     formData.append('answer_key', JSON.stringify(keyDict));
+    
+    if (geminiApiKey) {
+      formData.append('gemini_api_key', geminiApiKey);
+      localStorage.setItem('geminiApiKey', geminiApiKey);
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/grade`, {
@@ -273,6 +280,23 @@ export default function Grader() {
             onChange={(e) => setMaxScore(parseInt(e.target.value) || 0)}
           />
           <small className="text-muted">Poin per soal akan dihitung otomatis.</small>
+        </div>
+        
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          <h3 style={{ marginBottom: '0.5rem' }}>
+            🔑 Google Gemini API Key
+          </h3>
+          <input 
+            type="password" 
+            className="form-control"
+            placeholder="AIzaSy..."
+            value={geminiApiKey} 
+            onChange={(e) => {
+              setGeminiApiKey(e.target.value);
+              localStorage.setItem('geminiApiKey', e.target.value);
+            }}
+          />
+          <small className="text-muted">Dibutuhkan untuk mesin Vision AI cerdas.</small>
         </div>
       </div>
 
