@@ -58,35 +58,34 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
 
     green_channel = img[:, :, 1]
     green_channel = cv2.GaussianBlur(green_channel, (5, 5), 0)
-    _, form_mask = cv2.threshold(green_channel, 180, 255, cv2.THRESH_BINARY_INV)
+    _, form_mask = cv2.threshold(green_channel, 160, 255, cv2.THRESH_BINARY_INV)
     
     # Hubungkan garis merah yang terputus karena kualitas foto/cahaya
     kernel = np.ones((7, 7), np.uint8)
     form_mask = cv2.morphologyEx(form_mask, cv2.MORPH_CLOSE, kernel)
 
     # --- 2. Find the "PILIHAN GANDA" grid ---
-    contours, _ = cv2.findContours(form_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(form_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     
-    best_box = None
-    candidate_boxes = []
+    pilihan_ganda_box = None
+    max_bbox_area = 0
+    img_h, img_w = img.shape[:2]
     
     for cnt in contours:
-        area = cv2.contourArea(cnt)
-        if area > 40000: # large contour
-            x, y, w, h = cv2.boundingRect(cnt)
-            aspect_ratio = float(w) / h
-            if 1.5 < aspect_ratio < 6.0:
-                candidate_boxes.append((x, y, w, h))
-                
-    if candidate_boxes:
-        # Sort by Area (largest first) to find the PILIHAN GANDA box, ignoring smaller headers
-        candidate_boxes.sort(key=lambda b: b[2] * b[3], reverse=True)
-        best_box = candidate_boxes[0]
+        x, y, w, h = cv2.boundingRect(cnt)
+        bbox_area = w * h
+        # Kotak Pilihan Ganda berada di tengah halaman (25% - 65% dari atas)
+        if bbox_area > 30000 and img_h * 0.25 < y < img_h * 0.65:
+            aspect_ratio = w / float(h)
+            if 2.0 < aspect_ratio < 6.0 and w > img_w * 0.7:
+                if bbox_area > max_bbox_area:
+                    max_bbox_area = bbox_area
+                    pilihan_ganda_box = (x, y, w, h)
 
-    if best_box is None:
+    if pilihan_ganda_box is None:
         return {"error": "Tidak dapat menemukan kotak PILIHAN GANDA."}
 
-    x, y, w, h = best_box
+    x, y, w, h = pilihan_ganda_box
     
     cv2.rectangle(debug_img, (x, y), (x+w, y+h), (255, 0, 0), 3)
 
@@ -119,14 +118,14 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             # Kolom 1 (Soal 1-5): Angka 1 digit, huruf A lebih ke kiri
             # Kolom 3 & 4 (Soal 11-20): Angka 2 digit, huruf A terdorong ke kanan
             if col == 0:
-                start_pct = 0.18
+                start_pct = 0.14
             elif col == 1:
-                start_pct = 0.22
+                start_pct = 0.18
             else:
-                start_pct = 0.26
+                start_pct = 0.23
                 
             opt_start_x = cell_x + int(col_w * start_pct)
-            opt_area_w = int(col_w * 0.72)
+            opt_area_w = int(col_w * 0.75)
             opt_w = opt_area_w // 5
             
             pixel_counts = []
