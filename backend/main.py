@@ -87,7 +87,7 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
     cv2.rectangle(debug_img, (x, y), (x+w, y+h), (255, 0, 0), 3)
 
     # --- 3. Geometric Slicing ---
-    header_offset = int(h * 0.12)
+    header_offset = int(h * 0.18)
     grid_y = y + header_offset
     grid_h = h - header_offset
     
@@ -111,18 +111,19 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
             cell_x = x + (col * col_w)
             cell_y = grid_y + (row * row_h)
             
-            opt_start_x = cell_x + int(col_w * 0.25)
-            opt_area_w = int(col_w * 0.70)
+            opt_start_x = cell_x + int(col_w * 0.35)
+            opt_area_w = int(col_w * 0.55)
             opt_w = opt_area_w // 5
             
             pixel_counts = []
             for opt_idx in range(5):
                 opt_x = opt_start_x + (opt_idx * opt_w)
-                margin = 2
-                roi_x1 = opt_x + margin
-                roi_y1 = cell_y + margin
-                roi_x2 = opt_x + opt_w - margin
-                roi_y2 = cell_y + row_h - margin
+                margin_x = 2
+                margin_y = int(row_h * 0.15)
+                roi_x1 = opt_x + margin_x
+                roi_y1 = cell_y + margin_y
+                roi_x2 = opt_x + opt_w - margin_x
+                roi_y2 = cell_y + row_h - margin_y
                 
                 roi_x2 = min(roi_x2, img.shape[1])
                 roi_y2 = min(roi_y2, img.shape[0])
