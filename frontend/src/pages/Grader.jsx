@@ -6,6 +6,17 @@ export default function Grader() {
   const { mapelKeys, students, setStudents, classesList } = useAppContext();
   
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  const getFullUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://localhost:8000')) {
+      return url.replace('http://localhost:8000', API_URL);
+    }
+    if (url.startsWith('/')) {
+      return `${API_URL}${url}`;
+    }
+    return url;
+  };
   
   const [selectedClass, setSelectedClass] = useState(classesList[0] || '');
   const [selectedMapel, setSelectedMapel] = useState(Object.keys(mapelKeys)[0] || '');
@@ -403,11 +414,7 @@ export default function Grader() {
           {result.debug_url && (
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
               <h3>Debug View (Visualisasi Deteksi AI)</h3>
-              <img 
-                src={`${result.debug_url}?t=${new Date().getTime()}`} 
-                alt="Debug Image" 
-                style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
-              />
+              <img src={getFullUrl(result.debug_url)} alt="Debug Image" style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} />
             </div>
           )}
         </section>
@@ -442,11 +449,7 @@ export default function Grader() {
              <div style={{ marginTop: '2rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
                <h3>Debug View (Halaman 1)</h3>
                <p className="text-muted">Menampilkan hasil deteksi halaman pertama untuk memverifikasi akurasi posisi LJK.</p>
-               <img 
-                 src={`${batchResults[0].result.debug_url}?t=${new Date().getTime()}`} 
-                 alt="Debug Image" 
-                 style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
-               />
+               <img src={getFullUrl(batchResults[0].result.debug_url)} alt={`Page 1`} style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} />
              </div>
           )}
         </section>
