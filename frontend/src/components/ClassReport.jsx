@@ -1,6 +1,14 @@
 import React, { forwardRef } from 'react';
 
 const ClassReport = forwardRef(({ students, selectedClass, selectedMapel }, ref) => {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const getFullUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://localhost:8000')) return url.replace('http://localhost:8000', API_URL);
+    if (url.startsWith('/')) return `${API_URL}${url}`;
+    return url;
+  };
+
   const classStudents = students
     .filter(s => s.kelas === selectedClass)
     .sort((a, b) => parseInt(a.absen) - parseInt(b.absen));
@@ -50,7 +58,7 @@ const ClassReport = forwardRef(({ students, selectedClass, selectedMapel }, ref)
               <div style={{ flex: 2 }}>
                 <h3 style={{ fontSize: '16px', borderBottom: '1px solid #ccc', paddingBottom: '8px', marginBottom: '15px' }}>Bukti Pindai Kertas</h3>
                 {imageUrl ? (
-                  <img src={imageUrl} alt="Scan LJK" style={{ width: '100%', border: '1px solid #eee', borderRadius: '4px' }} />
+                  <img src={getFullUrl(imageUrl)} alt="Scan LJK" style={{ width: '100%', border: '1px solid #eee', borderRadius: '4px' }} />
                 ) : (
                   <div style={{ padding: '2rem', background: '#f5f5f5', textAlign: 'center', color: '#666', border: '1px dashed #ccc' }}>
                     Gambar hasil pindai belum tersedia untuk siswa ini.

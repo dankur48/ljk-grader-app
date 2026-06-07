@@ -8,6 +8,14 @@ import ClassReport from '../components/ClassReport';
 export default function Students() {
   const { students, setStudents, classesList, setClassesList, mapelKeys } = useAppContext();
   
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const getFullUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://localhost:8000')) return url.replace('http://localhost:8000', API_URL);
+    if (url.startsWith('/')) return `${API_URL}${url}`;
+    return url;
+  };
+
   // Filters
   const [selectedClass, setSelectedClass] = useState(classesList[0] || '');
   const [selectedMapel, setSelectedMapel] = useState(Object.keys(mapelKeys)[0] || '');
@@ -368,7 +376,7 @@ export default function Students() {
                   </div>
                   <div style={{ flex: 2, minWidth: '400px' }}>
                     <h3 style={{ marginBottom: '1rem' }}>Bukti Pindai LJK</h3>
-                    {nd.image_url ? <img src={nd.image_url} alt="Scan Result" style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} /> : <div style={{ padding: '2rem', textAlign: 'center', border: '1px dashed var(--glass-border)' }}>Gambar tidak tersedia.</div>}
+                    {nd.image_url ? <img src={getFullUrl(nd.image_url)} alt="Scan Result" style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} /> : <div style={{ padding: '2rem', textAlign: 'center', border: '1px dashed var(--glass-border)' }}>Gambar tidak tersedia.</div>}
                   </div>
                 </div>
               );
