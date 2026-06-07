@@ -267,7 +267,7 @@ export default function Students() {
               ) : (
                 displayedStudents.map((student) => {
                   const nilaiData = selectedMapel ? (student.nilai?.[selectedMapel]) : null;
-                  const score = typeof nilaiData === 'object' ? nilaiData.score : nilaiData;
+                  const score = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.score : nilaiData;
                   
                   return (
                     <tr key={student.id}>

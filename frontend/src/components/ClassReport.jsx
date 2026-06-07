@@ -22,9 +22,9 @@ const ClassReport = forwardRef(({ students, selectedClass, selectedMapel }, ref)
 
       {classStudents.map((student, index) => {
         const nilaiData = student.nilai?.[selectedMapel];
-        const score = typeof nilaiData === 'object' ? nilaiData.score : (nilaiData || 0);
-        const details = typeof nilaiData === 'object' ? nilaiData.details : [];
-        const imageUrl = typeof nilaiData === 'object' ? nilaiData.image_url : null;
+        const score = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.score : (nilaiData || 0);
+        const details = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.details : [];
+        const imageUrl = typeof nilaiData === 'object' && nilaiData !== null ? nilaiData.image_url : null;
 
         return (
           <div key={student.id} className={index > 0 ? "page-break" : ""} style={{ minHeight: '29.7cm', paddingBottom: '2cm' }}>
