@@ -79,8 +79,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
         bbox_area = w * h
-        # Kotak Pilihan Ganda berada di tengah halaman (25% - 65% dari atas)
-        if bbox_area > 30000 and img_h * 0.25 < y < img_h * 0.65:
+        # Kotak Pilihan Ganda selalu berada di bagian ATAS halaman (mulai dari 0% - 45% atas)
+        if bbox_area > 30000 and y < img_h * 0.45:
             aspect_ratio = w / float(h)
             if 2.0 < aspect_ratio < 6.0 and w > img_w * 0.7:
                 if bbox_area > max_bbox_area:
