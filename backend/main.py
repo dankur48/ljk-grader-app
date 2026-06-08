@@ -272,6 +272,9 @@ async def grade_ljk(
             pdf_document = fitz.open(stream=contents, filetype="pdf")
             batch_results = []
             
+            import time
+            import re
+            
             for page_num in range(pdf_document.page_count):
                 page = pdf_document.load_page(page_num)
                 # Convert PDF page to high-res image (300 DPI)
@@ -280,11 +283,34 @@ async def grade_ljk(
                 
                 # Only save debug.jpg for the very first page to save IO, but save permanent for ALL pages
                 save_debug = (page_num == 0)
-                res = process_ljk(img_bytes, key_dict, points_per_question, save_debug=save_debug, save_permanent=True, gemini_api_key=gemini_api_key)
+                
+                # Sistem Auto-Jeda & Retry untuk mengatasi Limit 15 RPM
+                max_retries = 3
+                res = None
+                for attempt in range(max_retries):
+                    res = process_ljk(img_bytes, key_dict, points_per_question, save_debug=save_debug, save_permanent=True, gemini_api_key=gemini_api_key)
+                    
+                    if "error" in res and "429" in str(res["error"]):
+                        wait_time = 30 # Default tunggu 30 detik
+                        # Coba ekstrak waktu tunggu dari pesan error Google (misal: "retry in 16.3s")
+                        match = re.search(r'retry in (\d+\.?\d*)s', str(res["error"]))
+                        if match:
+                            wait_time = int(float(match.group(1))) + 2
+                            
+                        print(f"Limit Google tercapai di halaman {page_num+1}. Auto-Jeda selama {wait_time} detik...")
+                        time.sleep(wait_time)
+                        continue # Ulangi proses halaman ini
+                    
+                    break # Jika sukses atau error lain, keluar dari loop retry
+                    
                 batch_results.append({
                     "page": page_num + 1,
                     "result": res
                 })
+                
+                # Jeda pelan-pelan (Pacing) 2.5 detik setiap lembar agar tidak menabrak limit 15 RPM
+                if page_num < pdf_document.page_count - 1:
+                    time.sleep(2.5)
                 
             return JSONResponse(content={"status": "success", "type": "batch", "batch_results": batch_results})
             
