@@ -103,7 +103,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
     
     cropped_img = img[crop_y1:crop_y2, crop_x1:crop_x2]
     
-    api_key = os.environ.get("GEMINI_API_KEY")
+    raw_api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = raw_api_key.strip() if raw_api_key else None
     
     results = []
     score = 0
