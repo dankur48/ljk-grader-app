@@ -169,8 +169,8 @@ Contoh output:
             col = q_idx // rows_per_col
             row = q_idx % rows_per_col
             
-            # Header LJK (tulisan PILIHAN GANDA) memakan sekitar 12% dari atas kotak
-            header_offset_y = int(pg_h * 0.12)
+            # Header LJK (tulisan PILIHAN GANDA) memakan sekitar 16% dari atas kotak
+            header_offset_y = int(pg_h * 0.16)
             effective_h = pg_h - header_offset_y
             row_h_eff = effective_h / rows_per_col
             
@@ -179,19 +179,25 @@ Contoh output:
             q_w_int = int(col_w)
             q_h_int = int(row_h_eff)
             
-            # Pilihan A-E biasanya dimulai dari 35% lebar kolom dan berakhir di 90%
-            opt_start_x = q_x + int(q_w_int * 0.35)
-            opt_total_w = q_w_int * 0.55
+            # Pilihan A-E dimulai dari 28% lebar kolom dan memakan 50% lebar
+            opt_start_x = q_x + int(q_w_int * 0.28)
+            opt_total_w = q_w_int * 0.50
             opt_step_x = opt_total_w / 4.0
             
-            # Fungsi kecil untuk menggambar kotak berdasarkan huruf (A=0, B=1, dsb)
+            # Fungsi kecil untuk menggambar KOTAK berdasarkan huruf (A=0, B=1, dsb)
             def draw_mark(ans_char, color, thickness=2):
                 if ans_char in ['A', 'B', 'C', 'D', 'E']:
                     opt_idx = ord(ans_char) - ord('A')
                     center_x = int(opt_start_x + (opt_idx * opt_step_x))
                     center_y = int(q_y + (q_h_int * 0.5))
-                    radius = int(min(opt_step_x, q_h_int) * 0.30)
-                    cv2.circle(debug_img, (center_x, center_y), radius, color, thickness)
+                    
+                    # Hitung batas sudut kiri atas dan kanan bawah untuk kotak
+                    half_w = int(opt_step_x * 0.40)
+                    half_h = int(q_h_int * 0.35)
+                    pt1 = (center_x - half_w, center_y - half_h)
+                    pt2 = (center_x + half_w, center_y + half_h)
+                    
+                    cv2.rectangle(debug_img, pt1, pt2, color, thickness)
                     
             # Selalu gambar lingkaran hijau untuk kunci jawaban
             draw_mark(correct_ans, (0, 255, 0), 3) # Hijau
