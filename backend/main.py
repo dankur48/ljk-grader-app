@@ -114,7 +114,7 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
         
         # Kirim FULL IMAGE ke Gemini
         pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
