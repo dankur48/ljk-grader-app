@@ -26,6 +26,7 @@ export default function Grader() {
   const [preview, setPreview] = useState(null);
   const [isPdf, setIsPdf] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [progressText, setProgressText] = useState('');
   const [result, setResult] = useState(null);
   const [batchResults, setBatchResults] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -87,46 +88,109 @@ export default function Grader() {
     }
     
     setLoading(true);
+    setProgressText('Mempersiapkan data...');
     setSyncStatus('');
     setSingleSaveStatus('');
-    const formData = new FormData();
-    formData.append('file', file);
     
-    // Hitung poin per soal secara otomatis
     const pointsPerQuestion = maxScore / 20.0;
-    formData.append('points_per_question', pointsPerQuestion);
-    
     const currentKey = mapelKeys[selectedMapel];
     const keyDict = currentKey.reduce((acc, curr) => {
       acc[curr.number.toString()] = curr.answer;
       return acc;
     }, {});
-    
-    formData.append('answer_key', JSON.stringify(keyDict));
+    const answerKeyStr = JSON.stringify(keyDict);
 
     try {
-      const response = await fetch(`${API_URL}/api/grade`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const data = await response.json();
-      
-      if (data.type === 'batch') {
-        setBatchResults(data.batch_results);
-        syncBatchToStudents(data.batch_results);
+      if (isPdf) {
+        setProgressText('Membaca file PDF dan memisahkan halaman...');
+        const splitFormData = new FormData();
+        splitFormData.append('file', file);
+        
+        const splitRes = await fetch(`${API_URL}/api/split-pdf`, {
+          method: 'POST',
+          body: splitFormData,
+        });
+        const splitData = await splitRes.json();
+        
+        if (splitData.error) throw new Error(splitData.error);
+        
+        const pages = splitData.pages;
+        let batchResArr = [];
+        
+        for (let i = 0; i < pages.length; i++) {
+          setProgressText(`Mengoreksi LJK ${i + 1} dari ${pages.length}...`);
+          
+          const gradeFormData = new FormData();
+          gradeFormData.append('filename', pages[i]);
+          gradeFormData.append('answer_key', answerKeyStr);
+          gradeFormData.append('points_per_question', pointsPerQuestion);
+          
+          let attempt = 0;
+          let success = false;
+          while (attempt < 3 && !success) {
+            try {
+              const gradeRes = await fetch(`${API_URL}/api/grade-path`, {
+                method: 'POST',
+                body: gradeFormData,
+              });
+              const gradeData = await gradeRes.json();
+              
+              if (gradeData.error && gradeData.error.includes("429")) {
+                 throw new Error("429 Rate Limit");
+              }
+              
+              if (gradeData.error) {
+                 console.error(`Error on page ${i+1}:`, gradeData.error);
+                 batchResArr.push({ page: i + 1, result: { error: gradeData.error } });
+                 success = true;
+              } else {
+                 batchResArr.push({ page: i + 1, result: gradeData });
+                 success = true;
+              }
+            } catch (e) {
+              attempt++;
+              if (e.message.includes("429")) {
+                setProgressText(`Limit Google tercapai. Jeda otomatis 30 detik... (LJK ${i+1}/${pages.length})`);
+                await new Promise(r => setTimeout(r, 30000));
+                setProgressText(`Melanjutkan koreksi LJK ${i + 1} dari ${pages.length}...`);
+              } else if (attempt === 3) {
+                 batchResArr.push({ page: i + 1, result: { error: "Gagal memproses setelah 3 percobaan." } });
+              }
+            }
+          }
+          
+          if (i < pages.length - 1) {
+            await new Promise(r => setTimeout(r, 2500));
+          }
+        }
+        
+        setBatchResults(batchResArr);
+        syncBatchToStudents(batchResArr);
+        
       } else {
+        setProgressText('Menganalisis LJK...');
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('points_per_question', pointsPerQuestion);
+        formData.append('answer_key', answerKeyStr);
+        
+        const response = await fetch(`${API_URL}/api/grade`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        const data = await response.json();
         setResult(data);
         if (data.status === 'success') {
-          // Reset single save dropdown when new result arrives
           setSelectedStudentToSave('');
         }
       }
     } catch (error) {
       console.error("Error grading:", error);
-      alert("Terjadi kesalahan saat menghubungi server backend.");
+      alert("Terjadi kesalahan: " + error.message);
     } finally {
       setLoading(false);
+      setProgressText('');
     }
   };
 
@@ -329,7 +393,12 @@ export default function Grader() {
           onClick={handleGrade}
           disabled={!file || loading}
         >
-          {loading ? <span className="loader">Sedang Memproses...</span> : isPdf ? `Koreksi Massal untuk Kelas ${selectedClass}` : "Koreksi LJK"}
+          {loading ? (
+            <span className="loader" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              {progressText || "Sedang Memproses..."}
+            </span>
+          ) : isPdf ? `Koreksi Massal untuk Kelas ${selectedClass}` : "Koreksi LJK"}
         </button>
       </section>
 

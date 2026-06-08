@@ -254,6 +254,61 @@ Contoh output:
         "image_url": final_image_url
     }
 
+@app.post("/api/split-pdf")
+async def split_pdf(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        if not file.filename.lower().endswith('.pdf'):
+            return JSONResponse(content={"error": "Bukan file PDF"}, status_code=400)
+            
+        pdf_document = fitz.open(stream=contents, filetype="pdf")
+        
+        import uuid
+        batch_id = str(uuid.uuid4())[:8]
+        pages = []
+        
+        for page_num in range(pdf_document.page_count):
+            page = pdf_document.load_page(page_num)
+            pix = page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
+            img_bytes = pix.tobytes("png")
+            
+            page_filename = f"batch-{batch_id}-page{page_num+1}.png"
+            page_filepath = os.path.join("scans", page_filename)
+            with open(page_filepath, "wb") as f:
+                f.write(img_bytes)
+                
+            pages.append(page_filename)
+            
+        return JSONResponse(content={"status": "success", "pages": pages})
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.post("/api/grade-path")
+async def grade_ljk_path(
+    filename: str = Form(...), 
+    answer_key: str = Form(...),
+    points_per_question: float = Form(5.0),
+    gemini_api_key: str = Form(None)
+):
+    try:
+        import json
+        key_dict = json.loads(answer_key)
+        
+        filepath = os.path.join("scans", filename)
+        if not os.path.exists(filepath):
+            return JSONResponse(content={"error": "File tidak ditemukan"}, status_code=404)
+            
+        with open(filepath, "rb") as f:
+            contents = f.read()
+            
+        # Untuk batch, kita tidak timpa debug.jpg utama agar lebih ringan
+        result = process_ljk(contents, key_dict, points_per_question, save_debug=False, save_permanent=True, gemini_api_key=gemini_api_key)
+        result["type"] = "single"
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
 @app.post("/api/grade")
 async def grade_ljk(
     file: UploadFile = File(...), 
@@ -264,62 +319,15 @@ async def grade_ljk(
     try:
         import json
         key_dict = json.loads(answer_key)
-        
         contents = await file.read()
         
-        # Check if it's a PDF
         if file.filename.lower().endswith('.pdf'):
-            pdf_document = fitz.open(stream=contents, filetype="pdf")
-            batch_results = []
+            return JSONResponse(content={"error": "Gunakan endpoint /api/split-pdf untuk PDF"}, status_code=400)
             
-            import time
-            import re
-            
-            for page_num in range(pdf_document.page_count):
-                page = pdf_document.load_page(page_num)
-                # Convert PDF page to high-res image (300 DPI)
-                pix = page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
-                img_bytes = pix.tobytes("png")
-                
-                # Only save debug.jpg for the very first page to save IO, but save permanent for ALL pages
-                save_debug = (page_num == 0)
-                
-                # Sistem Auto-Jeda & Retry untuk mengatasi Limit 15 RPM
-                max_retries = 3
-                res = None
-                for attempt in range(max_retries):
-                    res = process_ljk(img_bytes, key_dict, points_per_question, save_debug=save_debug, save_permanent=True, gemini_api_key=gemini_api_key)
-                    
-                    if "error" in res and "429" in str(res["error"]):
-                        wait_time = 30 # Default tunggu 30 detik
-                        # Coba ekstrak waktu tunggu dari pesan error Google (misal: "retry in 16.3s")
-                        match = re.search(r'retry in (\d+\.?\d*)s', str(res["error"]))
-                        if match:
-                            wait_time = int(float(match.group(1))) + 2
-                            
-                        print(f"Limit Google tercapai di halaman {page_num+1}. Auto-Jeda selama {wait_time} detik...")
-                        time.sleep(wait_time)
-                        continue # Ulangi proses halaman ini
-                    
-                    break # Jika sukses atau error lain, keluar dari loop retry
-                    
-                batch_results.append({
-                    "page": page_num + 1,
-                    "result": res
-                })
-                
-                # Jeda pelan-pelan (Pacing) 2.5 detik setiap lembar agar tidak menabrak limit 15 RPM
-                if page_num < pdf_document.page_count - 1:
-                    time.sleep(2.5)
-                
-            return JSONResponse(content={"status": "success", "type": "batch", "batch_results": batch_results})
-            
-        else:
-            # Single Image
-            result = process_ljk(contents, key_dict, points_per_question, save_debug=True, save_permanent=True, gemini_api_key=gemini_api_key)
-            result["type"] = "single"
-            return JSONResponse(content=result)
-            
+        result = process_ljk(contents, key_dict, points_per_question, save_debug=True, save_permanent=True, gemini_api_key=gemini_api_key)
+        result["type"] = "single"
+        return JSONResponse(content=result)
+        
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
