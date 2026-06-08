@@ -169,8 +169,8 @@ Contoh output:
             col = q_idx // rows_per_col
             row = q_idx % rows_per_col
             
-            # Header LJK (tulisan PILIHAN GANDA) memakan sekitar 16% dari atas kotak
-            header_offset_y = int(pg_h * 0.16)
+            # Header LJK (tulisan PILIHAN GANDA) memakan sekitar 20% dari atas kotak
+            header_offset_y = int(pg_h * 0.20)
             effective_h = pg_h - header_offset_y
             row_h_eff = effective_h / rows_per_col
             
@@ -179,9 +179,9 @@ Contoh output:
             q_w_int = int(col_w)
             q_h_int = int(row_h_eff)
             
-            # Pilihan A-E dimulai dari 28% lebar kolom dan memakan 50% lebar
-            opt_start_x = q_x + int(q_w_int * 0.28)
-            opt_total_w = q_w_int * 0.50
+            # Pilihan A-E dimulai dari 25% lebar kolom dan memakan 35% lebar
+            opt_start_x = q_x + int(q_w_int * 0.25)
+            opt_total_w = q_w_int * 0.35
             opt_step_x = opt_total_w / 4.0
             
             # Fungsi kecil untuk menggambar KOTAK berdasarkan huruf (A=0, B=1, dsb)
@@ -193,7 +193,7 @@ Contoh output:
                     
                     # Hitung batas sudut kiri atas dan kanan bawah untuk kotak
                     half_w = int(opt_step_x * 0.40)
-                    half_h = int(q_h_int * 0.35)
+                    half_h = int(q_h_int * 0.25)
                     pt1 = (center_x - half_w, center_y - half_h)
                     pt2 = (center_x + half_w, center_y + half_h)
                     
