@@ -116,13 +116,12 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash-lite')
         
-        # Kirim FULL IMAGE ke Gemini
-        pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        # Kirim potongan gambar (cropped) ke Gemini agar AI "Lite" lebih fokus dan akurat
+        pil_img = Image.fromarray(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
         
         prompt = """
 Anda adalah sistem koreksi ujian otomatis (Grader) berteknologi tinggi.
-Saya memberikan gambar PENUH dari sebuah LJK (Lembar Jawaban Komputer). 
-Fokuslah pada kotak bagian PILIHAN GANDA (nomor 1 sampai 20) yang letaknya kira-kira di tengah halaman.
+Saya memberikan potongan gambar khusus bagian kotak PILIHAN GANDA dari sebuah LJK.
 Ikuti instruksi berikut dengan sangat teliti:
 1. Pindai seluruh area LJK. Abaikan jika sudut pengambilan gambar atau posisi kertas sedikit miring, cari struktur baris nomor soal dan kolom pilihan jawaban (A, B, C, D, atau E).
 2. Kenali tanda pilihan siswa. Tanda bisa berupa silang (X), bulatan penuh, garis miring (/), atau centang (√). PENTING: Jika tanda berupa centang (√) atau coretan miring panjang yang ujung ekornya menyerempet huruf lain, jawaban yang dipilih adalah letak DIMANA CORETAN ITU DIMULAI (titik pangkal/pusat coretan utama), BUKAN letak ujung ekor coretan.
