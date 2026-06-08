@@ -179,9 +179,9 @@ Contoh output:
             q_w_int = int(col_w)
             q_h_int = int(row_h_eff)
             
-            # Pilihan A-E dimulai dari 25% lebar kolom dan memakan 35% lebar
+            # Pilihan A-E dimulai dari 25% lebar kolom dan memakan 60% lebar (berakhir di 85%)
             opt_start_x = q_x + int(q_w_int * 0.25)
-            opt_total_w = q_w_int * 0.35
+            opt_total_w = q_w_int * 0.60
             opt_step_x = opt_total_w / 4.0
             
             # Fungsi kecil untuk menggambar KOTAK berdasarkan huruf (A=0, B=1, dsb)
@@ -192,8 +192,8 @@ Contoh output:
                     center_y = int(q_y + (q_h_int * 0.5))
                     
                     # Hitung batas sudut kiri atas dan kanan bawah untuk kotak
-                    half_w = int(opt_step_x * 0.40)
-                    half_h = int(q_h_int * 0.25)
+                    half_w = int(opt_step_x * 0.35)
+                    half_h = int(q_h_int * 0.30)
                     pt1 = (center_x - half_w, center_y - half_h)
                     pt2 = (center_x + half_w, center_y + half_h)
                     
