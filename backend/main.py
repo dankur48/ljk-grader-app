@@ -157,8 +157,13 @@ Contoh output:
             })
             
     except Exception as e:
-        return {"error": f"Error memproses dengan Gemini: {str(e)}"}
-
+        error_msg = f"Error memproses dengan Gemini: {str(e)}"
+        try:
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            error_msg += f"\n\n[DIAGNOSTIK] Model yang tersedia untuk Kunci API Anda: {', '.join(available_models)}"
+        except Exception as list_e:
+            error_msg += f"\n\n[DIAGNOSTIK] Gagal mengambil daftar model: {str(list_e)}"
+        return {"error": error_msg}
     debug_base64 = None
     if save_debug:
         # Tampilkan potongan gambar yang dikirim ke Gemini sebagai debug
