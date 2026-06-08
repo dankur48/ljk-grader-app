@@ -128,8 +128,9 @@ Ikuti instruksi berikut dengan sangat teliti:
 2. Kenali tanda pilihan siswa. Tanda bisa berupa silang (X), bulatan penuh, garis miring (/), atau centang (√). PENTING: Jika tanda berupa centang (√) atau coretan miring panjang yang ujung ekornya menyerempet huruf lain, jawaban yang dipilih adalah letak DIMANA CORETAN ITU DIMULAI (titik pangkal/pusat coretan utama), BUKAN letak ujung ekor coretan.
 3. Penanganan Jawaban Ganda: Jika dalam satu nomor terdapat dua tanda pilihan utama tanpa ada tanda pembatalan yang jelas, kategorikan sebagai "GANDA".
 4. Penanganan Bekas Tipe-x / Coretan: Lakukan analisis visual secara mendalam. Jika ada tanda yang terlihat samar karena dihapus dengan tipe-x atau dicoret-coret sebagai bentuk pembatalan, abaikan tanda tersebut. Ambil pilihan tanda yang paling bersih, tegas, dan merupakan keputusan final siswa.
-5. Format Output: Berikan hasil pemeriksaan HANYA dalam format JSON murni yang bersih tanpa teks pengantar, penutup, atau markdown (jangan gunakan ```json). Kunci harus berupa nomor soal (string "1" sampai "20") dan nilai berupa huruf kapital ("A", "B", "C", "D", "E"), "GANDA", atau null jika kosong/ragu.
-Contoh output:
+5. Format Output: Berikan hasil pemeriksaan HANYA dalam format JSON murni yang bersih. Kunci harus berupa nomor soal (string "1" sampai "20") dan nilai berupa huruf kapital ("A", "B", "C", "D", "E"), "GANDA", atau null jika kosong/ragu.
+6. PENTING: Jika potongan gambar ini ternyata BUKAN tabel Pilihan Ganda (misalnya ini adalah baris-baris tulisan tangan, jawaban Essay, atau teks soal), JANGAN berhalusinasi mengarang jawaban. Langsung kembalikan output persis seperti ini: {"error": "Halaman Essay / Bukan LJK Pilihan Ganda"}
+Contoh output normal:
 {"1": "A", "2": "C", "3": "GANDA", "4": "B", "5": "E", "6": "A", "7": "D", "8": "E", "9": null, "10": "A", "11": "B", "12": "C", "13": "D", "14": "E", "15": "A", "16": "B", "17": "C", "18": "D", "19": "E", "20": "A"}
 """
         response = model.generate_content([prompt, pil_img])
@@ -141,6 +142,9 @@ Contoh output:
             text_response = text_response[3:-3]
             
         gemini_answers = json.loads(text_response.strip())
+        
+        if "error" in gemini_answers:
+            return {"error": gemini_answers["error"]}
         
         # Variabel untuk menghitung posisi huruf di dalam kotak pilihan ganda
         pg_x, pg_y, pg_w, pg_h = pilihan_ganda_box
