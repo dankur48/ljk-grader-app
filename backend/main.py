@@ -116,14 +116,15 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        # Convert OpenCV image to PIL Image for Gemini
-        pil_img = Image.fromarray(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
+        # Kirim FULL IMAGE ke Gemini
+        pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         
         prompt = """
 Anda adalah sistem koreksi ujian otomatis (Grader) berteknologi tinggi.
-Saya memberikan gambar bagian PILIHAN GANDA dari sebuah LJK (Lembar Jawaban Komputer).
+Saya memberikan gambar PENUH dari sebuah LJK (Lembar Jawaban Komputer). 
+Fokuslah pada kotak bagian PILIHAN GANDA (nomor 1 sampai 20) yang letaknya kira-kira di tengah halaman.
 Ikuti instruksi berikut dengan sangat teliti:
-1. Pindai seluruh area LJK. Abaikan jika sudut pengambilan gambar atau posisi kertas sedikit miring, fokuslah pada struktur baris nomor soal dan kolom pilihan jawaban (A, B, C, D, atau E).
+1. Pindai seluruh area LJK. Abaikan jika sudut pengambilan gambar atau posisi kertas sedikit miring, cari struktur baris nomor soal dan kolom pilihan jawaban (A, B, C, D, atau E).
 2. Kenali tanda pilihan siswa baik yang berbentuk silang (X), bulatan penuh, maupun garis miring (/) yang tegas sebagai jawaban yang dipilih.
 3. Penanganan Jawaban Ganda: Jika dalam satu nomor terdapat dua tanda pilihan tanpa ada tanda pembatalan yang jelas, langsung kategorikan nomor tersebut sebagai "GANDA".
 4. Penanganan Bekas Tipe-x / Coretan: Lakukan analisis visual secara mendalam. Jika ada tanda yang terlihat samar karena dihapus dengan tipe-x atau dicoret-coret sebagai bentuk pembatalan, abaikan tanda tersebut. Ambil pilihan tanda yang paling bersih, tegas, dan merupakan keputusan final siswa.
@@ -141,6 +142,13 @@ Contoh output:
             
         gemini_answers = json.loads(text_response.strip())
         
+        # Variabel untuk menghitung posisi huruf di dalam kotak pilihan ganda
+        pg_x, pg_y, pg_w, pg_h = pilihan_ganda_box
+        cols = 4
+        rows_per_col = 5
+        col_w = pg_w / cols
+        row_h = pg_h / rows_per_col
+
         for q_num in range(1, 21):
             student_ans = gemini_answers.get(str(q_num))
             correct_ans = answer_key.get(str(q_num), 'A')
@@ -155,7 +163,36 @@ Contoh output:
                 "correct_answer": correct_ans,
                 "is_correct": is_correct
             })
+
+            # Kalkulasi posisi untuk menggambar bukti koreksi di debug_img
+            q_idx = q_num - 1
+            col = q_idx // rows_per_col
+            row = q_idx % rows_per_col
             
+            q_x = pg_x + int(col * col_w)
+            q_y = pg_y + int(row * row_h)
+            q_w_int = int(col_w)
+            q_h_int = int(row_h)
+            
+            opt_start_x = q_x + int(q_w_int * 0.3)
+            opt_step_x = (q_w_int - int(q_w_int * 0.3)) / 5.0
+            
+            # Fungsi kecil untuk menggambar kotak berdasarkan huruf (A=0, B=1, dsb)
+            def draw_mark(ans_char, color, thickness=2):
+                if ans_char in ['A', 'B', 'C', 'D', 'E']:
+                    opt_idx = ord(ans_char) - ord('A')
+                    center_x = int(opt_start_x + opt_idx * opt_step_x + opt_step_x / 2)
+                    center_y = int(q_y + q_h_int / 2)
+                    radius = int(min(opt_step_x, q_h_int) * 0.35)
+                    cv2.circle(debug_img, (center_x, center_y), radius, color, thickness)
+                    
+            # Selalu gambar lingkaran hijau untuk kunci jawaban
+            draw_mark(correct_ans, (0, 255, 0), 3) # Hijau
+            
+            # Jika jawaban siswa salah dan ada isinya, gambar lingkaran merah
+            if not is_correct and student_ans and student_ans in ['A', 'B', 'C', 'D', 'E']:
+                draw_mark(student_ans, (0, 0, 255), 2) # Merah
+
     except Exception as e:
         error_msg = f"Error memproses dengan Gemini: {str(e)}"
         try:
@@ -166,8 +203,8 @@ Contoh output:
         return {"error": error_msg}
     debug_base64 = None
     if save_debug:
-        # Tampilkan potongan gambar yang dikirim ke Gemini sebagai debug
-        _, buffer = cv2.imencode('.jpg', cropped_img)
+        # Tampilkan FULL IMAGE yang sudah digambar bukti koreksi
+        _, buffer = cv2.imencode('.jpg', debug_img)
         import base64
         b64_str = base64.b64encode(buffer).decode('utf-8')
         debug_base64 = f"data:image/jpeg;base64,{b64_str}"
