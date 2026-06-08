@@ -125,8 +125,8 @@ Saya memberikan gambar PENUH dari sebuah LJK (Lembar Jawaban Komputer).
 Fokuslah pada kotak bagian PILIHAN GANDA (nomor 1 sampai 20) yang letaknya kira-kira di tengah halaman.
 Ikuti instruksi berikut dengan sangat teliti:
 1. Pindai seluruh area LJK. Abaikan jika sudut pengambilan gambar atau posisi kertas sedikit miring, cari struktur baris nomor soal dan kolom pilihan jawaban (A, B, C, D, atau E).
-2. Kenali tanda pilihan siswa baik yang berbentuk silang (X), bulatan penuh, maupun garis miring (/) yang tegas sebagai jawaban yang dipilih.
-3. Penanganan Jawaban Ganda: Jika dalam satu nomor terdapat dua tanda pilihan tanpa ada tanda pembatalan yang jelas, langsung kategorikan nomor tersebut sebagai "GANDA".
+2. Kenali tanda pilihan siswa. Tanda bisa berupa silang (X), bulatan penuh, garis miring (/), atau centang (√). PENTING: Jika tanda berupa centang (√) atau coretan miring panjang yang ujung ekornya menyerempet huruf lain, jawaban yang dipilih adalah letak DIMANA CORETAN ITU DIMULAI (titik pangkal/pusat coretan utama), BUKAN letak ujung ekor coretan.
+3. Penanganan Jawaban Ganda: Jika dalam satu nomor terdapat dua tanda pilihan utama tanpa ada tanda pembatalan yang jelas, kategorikan sebagai "GANDA".
 4. Penanganan Bekas Tipe-x / Coretan: Lakukan analisis visual secara mendalam. Jika ada tanda yang terlihat samar karena dihapus dengan tipe-x atau dicoret-coret sebagai bentuk pembatalan, abaikan tanda tersebut. Ambil pilihan tanda yang paling bersih, tegas, dan merupakan keputusan final siswa.
 5. Format Output: Berikan hasil pemeriksaan HANYA dalam format JSON murni yang bersih tanpa teks pengantar, penutup, atau markdown (jangan gunakan ```json). Kunci harus berupa nomor soal (string "1" sampai "20") dan nilai berupa huruf kapital ("A", "B", "C", "D", "E"), "GANDA", atau null jika kosong/ragu.
 Contoh output:
@@ -179,8 +179,8 @@ Contoh output:
             q_w_int = int(col_w)
             q_h_int = int(row_h_eff)
             
-            # Pilihan A-E dimulai dari 25% lebar kolom dan memakan 60% lebar (berakhir di 85%)
-            opt_start_x = q_x + int(q_w_int * 0.25)
+            # Pilihan A-E dimulai dari 28% lebar kolom dan memakan 60% lebar (berakhir di 88%)
+            opt_start_x = q_x + int(q_w_int * 0.28)
             opt_total_w = q_w_int * 0.60
             opt_step_x = opt_total_w / 4.0
             
