@@ -113,7 +113,7 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro-vision')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Convert OpenCV image to PIL Image for Gemini
         pil_img = Image.fromarray(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
