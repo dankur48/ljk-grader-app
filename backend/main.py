@@ -119,16 +119,16 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         pil_img = Image.fromarray(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
         
         prompt = """
-Anda adalah sistem koreksi ujian otomatis (Grader). 
+Anda adalah sistem koreksi ujian otomatis (Grader) berteknologi tinggi.
 Saya memberikan gambar bagian PILIHAN GANDA dari sebuah LJK (Lembar Jawaban Komputer).
-Tugas Anda:
-Membaca dan mengekstrak pilihan jawaban siswa untuk soal nomor 1 sampai 20.
-Siswa akan memberi tanda silang (X) atau centang (V) pada salah satu huruf A, B, C, D, atau E.
-Jika jawaban terlihat ragu-ragu, dicoret semua, atau dikosongkan, kembalikan null.
-Berikan output HANYA dalam format JSON murni dengan kunci nomor soal (string "1" sampai "20") dan nilai huruf kapital (string "A", "B", "C", "D", "E") atau null. 
-Jangan gunakan markdown formatting tambahan (seperti ```json). Output harus langsung bisa di-parse.
-Contoh output yang benar:
-{"1": "A", "2": "C", "3": null, "4": "B", "5": "E", "6": "A", "7": "D", "8": "E", "9": null, "10": "A", "11": "B", "12": "C", "13": "D", "14": "E", "15": "A", "16": "B", "17": "C", "18": "D", "19": "E", "20": "A"}
+Ikuti instruksi berikut dengan sangat teliti:
+1. Pindai seluruh area LJK. Abaikan jika sudut pengambilan gambar atau posisi kertas sedikit miring, fokuslah pada struktur baris nomor soal dan kolom pilihan jawaban (A, B, C, D, atau E).
+2. Kenali tanda pilihan siswa baik yang berbentuk silang (X), bulatan penuh, maupun garis miring (/) yang tegas sebagai jawaban yang dipilih.
+3. Penanganan Jawaban Ganda: Jika dalam satu nomor terdapat dua tanda pilihan tanpa ada tanda pembatalan yang jelas, langsung kategorikan nomor tersebut sebagai "GANDA".
+4. Penanganan Bekas Tipe-x / Coretan: Lakukan analisis visual secara mendalam. Jika ada tanda yang terlihat samar karena dihapus dengan tipe-x atau dicoret-coret sebagai bentuk pembatalan, abaikan tanda tersebut. Ambil pilihan tanda yang paling bersih, tegas, dan merupakan keputusan final siswa.
+5. Format Output: Berikan hasil pemeriksaan HANYA dalam format JSON murni yang bersih tanpa teks pengantar, penutup, atau markdown (jangan gunakan ```json). Kunci harus berupa nomor soal (string "1" sampai "20") dan nilai berupa huruf kapital ("A", "B", "C", "D", "E"), "GANDA", atau null jika kosong/ragu.
+Contoh output:
+{"1": "A", "2": "C", "3": "GANDA", "4": "B", "5": "E", "6": "A", "7": "D", "8": "E", "9": null, "10": "A", "11": "B", "12": "C", "13": "D", "14": "E", "15": "A", "16": "B", "17": "C", "18": "D", "19": "E", "20": "A"}
 """
         response = model.generate_content([prompt, pil_img])
         text_response = response.text.strip()
