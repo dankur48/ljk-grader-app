@@ -44,6 +44,18 @@ export const AppProvider = ({ children }) => {
           if (data.classesList) setClassesList(data.classesList);
           if (data.students) setStudents(data.students);
           if (data.mapelKeys) setMapelKeys(data.mapelKeys);
+        } else {
+          // Jika DB di awan masih kosong (baru pertama kali konek), 
+          // dorong (push) data lokal yang ada saat ini ke awan!
+          const localClasses = JSON.parse(localStorage.getItem('autograder_classes') || '[]');
+          const localStudents = JSON.parse(localStorage.getItem('autograder_students') || '[]');
+          const localMapel = JSON.parse(localStorage.getItem('autograder_mapelKeys') || '{}');
+          
+          setDoc(doc(db, "autograder_db", "main_data"), {
+            classesList: localClasses,
+            students: localStudents,
+            mapelKeys: localMapel
+          }).catch(console.error);
         }
         setIsLoadingDb(false);
       }, (err) => {
