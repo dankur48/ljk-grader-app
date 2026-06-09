@@ -29,40 +29,34 @@ export const AppProvider = ({ children }) => {
   });
 
   // --- Firebase States ---
-  const [firebaseConfig, setFirebaseConfig] = useState(() => localStorage.getItem('autograder_firebase_config') || '');
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [isLoadingDb, setIsLoadingDb] = useState(true);
 
   // --- Connect to Firebase ---
   useEffect(() => {
-    if (firebaseConfig) {
-      const db = initFirebase(firebaseConfig);
-      if (db) {
-        setIsDbConnected(true);
-        // Real-time listener
-        const unsub = onSnapshot(doc(db, "autograder_db", "main_data"), (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data.classesList) setClassesList(data.classesList);
-            if (data.students) setStudents(data.students);
-            if (data.mapelKeys) setMapelKeys(data.mapelKeys);
-          }
-          setIsLoadingDb(false);
-        }, (err) => {
-          console.error("Firestore Error:", err);
-          setIsDbConnected(false);
-          setIsLoadingDb(false);
-        });
-        return () => unsub();
-      } else {
+    const db = initFirebase();
+    if (db) {
+      setIsDbConnected(true);
+      // Real-time listener
+      const unsub = onSnapshot(doc(db, "autograder_db", "main_data"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.classesList) setClassesList(data.classesList);
+          if (data.students) setStudents(data.students);
+          if (data.mapelKeys) setMapelKeys(data.mapelKeys);
+        }
+        setIsLoadingDb(false);
+      }, (err) => {
+        console.error("Firestore Error:", err);
         setIsDbConnected(false);
         setIsLoadingDb(false);
-      }
+      });
+      return () => unsub();
     } else {
       setIsDbConnected(false);
       setIsLoadingDb(false);
     }
-  }, [firebaseConfig]);
+  }, []);
 
   // --- Update Handlers ---
   const updateClassesList = (newValOrFn) => {
@@ -101,17 +95,6 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  const saveFirebaseConfig = (configStr) => {
-    localStorage.setItem('autograder_firebase_config', configStr);
-    setFirebaseConfig(configStr);
-  };
-
-  const disconnectFirebase = () => {
-    localStorage.removeItem('autograder_firebase_config');
-    setFirebaseConfig('');
-    setIsDbConnected(false);
-  };
-
   useEffect(() => {
     if (user) {
       localStorage.setItem('autograder_user', JSON.stringify(user));
@@ -133,7 +116,7 @@ export const AppProvider = ({ children }) => {
       classesList, setClassesList: updateClassesList,
       students, setStudents: updateStudents,
       mapelKeys, setMapelKeys: updateMapelKeys,
-      isDbConnected, isLoadingDb, firebaseConfig, saveFirebaseConfig, disconnectFirebase
+      isDbConnected, isLoadingDb
     }}>
       {children}
     </AppContext.Provider>

@@ -1,22 +1,23 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDSInJ-WLOgr_7kskROooUAGHmdCtQ19OQ",
+  authDomain: "autograder-sekolah.firebaseapp.com",
+  projectId: "autograder-sekolah",
+  storageBucket: "autograder-sekolah.firebasestorage.app",
+  messagingSenderId: "670883689154",
+  appId: "1:670883689154:web:8ce86606902486e9a2c15b",
+  measurementId: "G-KPLFWNRSVB"
+};
+
 let db = null;
 
-export const initFirebase = (configStr) => {
-  if (!configStr) return null;
-  
+export const initFirebase = () => {
   try {
-    const config = typeof configStr === 'string' ? JSON.parse(configStr) : configStr;
-    
-    // Validasi konfigurasi dasar Firebase
-    if (!config.apiKey || !config.projectId) {
-      throw new Error("Konfigurasi Firebase tidak valid. Pastikan ada apiKey dan projectId.");
-    }
-
     let app;
     if (!getApps().length) {
-      app = initializeApp(config);
+      app = initializeApp(firebaseConfig);
     } else {
       app = getApp(); // Gunakan app yang sudah ada jika React me-render ulang
     }
