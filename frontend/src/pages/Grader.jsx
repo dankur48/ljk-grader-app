@@ -130,7 +130,7 @@ export default function Grader() {
           while (attempt < 3 && !success) {
             try {
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds timeout
+              const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
               
               const gradeRes = await fetch(`${API_URL}/api/grade-path`, {
                 method: 'POST',
@@ -509,19 +509,15 @@ export default function Grader() {
           <h2 style={{ marginBottom: '1.5rem' }}>Log Hasil PDF</h2>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
-            {batchResults.map((item) => {
-              const res = item.result;
-              const isError = res.error != null;
-              
+            {batchResults.map((item, idx) => {
+              const isErr = !!item.result.error;
               return (
-                <div key={item.page} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: `1px solid ${isError ? 'var(--danger)' : 'var(--success)'}` }}>
-                  <h4 style={{ color: 'var(--text-muted)' }}>Hal. {item.page} (Absen {item.page})</h4>
-                  {isError ? (
-                    <p style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: '0.5rem' }}>Gagal dibaca</p>
+                <div key={idx} style={{ padding: '0.75rem', borderRadius: '8px', border: `1px solid ${isErr ? 'var(--danger)' : 'var(--success)'}`, background: 'rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '0.25rem', fontSize: '0.9rem' }}>Hal. {item.page} (Absen {idx + 1})</div>
+                  {isErr ? (
+                    <div style={{ color: 'var(--danger)', fontSize: '0.75rem', overflowWrap: 'break-word' }}>{item.result.error}</div>
                   ) : (
-                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--success)', marginTop: '0.5rem' }}>
-                      {res.score}
-                    </div>
+                    <div style={{ color: 'var(--success)', fontSize: '0.8rem' }}>Skor: {item.result.score}</div>
                   )}
                 </div>
               );
