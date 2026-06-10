@@ -195,48 +195,52 @@ export default function Grader() {
   };
 
   const syncBatchToStudents = (batchData) => {
-    const classStudents = students
-      .filter(s => s.kelas === selectedClass)
-      .sort((a, b) => parseInt(a.absen) - parseInt(b.absen));
-      
-    if (classStudents.length === 0) {
-      setSyncStatus(`Gagal tersinkronisasi: Tidak ada murid yang terdaftar di kelas ${selectedClass}. Silakan isi Data Murid terlebih dahulu.`);
-      return;
-    }
-
-    let updatedCount = 0;
-    
-    const updatedStudents = students.map((student) => {
-      if (student.kelas !== selectedClass) return student;
-      const indexInClass = classStudents.findIndex(s => s.id === student.id);
-      
-      if (indexInClass !== -1 && indexInClass < batchData.length) {
-        const pageResult = batchData[indexInClass].result;
-        if (pageResult.status === 'success') {
-          updatedCount++;
-          return {
-            ...student,
-            nilai: {
-              ...(student.nilai || {}),
-              [selectedMapel]: {
-                score: pageResult.score,
-                details: pageResult.details,
-                image_url: pageResult.image_url
-              }
-            }
-          };
-        }
+    setStudents(prevStudents => {
+      const classStudents = prevStudents
+        .filter(s => s.kelas === selectedClass)
+        .sort((a, b) => parseInt(a.absen) - parseInt(b.absen));
+        
+      if (classStudents.length === 0) {
+        setSyncStatus(`Gagal tersinkronisasi: Tidak ada murid yang terdaftar di kelas ${selectedClass}. Silakan isi Data Murid terlebih dahulu.`);
+        return prevStudents;
       }
-      return student;
+
+      let updatedCount = 0;
+      
+      const updatedStudents = prevStudents.map((student) => {
+        if (student.kelas !== selectedClass) return student;
+        const indexInClass = classStudents.findIndex(s => s.id === student.id);
+        
+        if (indexInClass !== -1 && indexInClass < batchData.length) {
+          const pageResult = batchData[indexInClass].result;
+          if (pageResult && pageResult.status === 'success') {
+            updatedCount++;
+            return {
+              ...student,
+              nilai: {
+                ...(student.nilai || {}),
+                [selectedMapel]: {
+                  score: pageResult.score,
+                  details: pageResult.details,
+                  image_url: pageResult.image_url
+                }
+              }
+            };
+          }
+        }
+        return student;
+      });
+      
+      if (updatedCount === 0) {
+        setSyncStatus(`Gagal! Dari ${batchData.length} halaman, tidak ada satu pun yang berhasil masuk ke data murid. Pastikan Nomor Absen sudah urut dan Kelas benar.`);
+      } else if (updatedCount < batchData.length) {
+        setSyncStatus(`Berhasil menyinkronkan nilai ${updatedCount} murid. Ada halaman yang error atau jumlah murid di web lebih sedikit dari halaman PDF.`);
+      } else {
+        setSyncStatus(`Sukses! Nilai telah masuk ke data ${updatedCount} murid di kelas ${selectedClass} (Mapel: ${selectedMapel}).`);
+      }
+
+      return updatedStudents;
     });
-    
-    setStudents(updatedStudents);
-    
-    if (updatedCount < batchData.length) {
-      setSyncStatus(`Berhasil menyinkronkan nilai ${updatedCount} murid. Ada halaman yang error atau jumlah murid di web lebih sedikit dari halaman PDF.`);
-    } else {
-      setSyncStatus(`Sukses! Nilai telah masuk ke data ${updatedCount} murid di kelas ${selectedClass} (Mapel: ${selectedMapel}).`);
-    }
   };
 
   const handleSaveSingleResult = () => {
