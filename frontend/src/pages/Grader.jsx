@@ -129,10 +129,16 @@ export default function Grader() {
           let success = false;
           while (attempt < 3 && !success) {
             try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds timeout
+              
               const gradeRes = await fetch(`${API_URL}/api/grade-path`, {
                 method: 'POST',
                 body: gradeFormData,
+                signal: controller.signal
               });
+              
+              clearTimeout(timeoutId);
               const gradeData = await gradeRes.json();
               
               if (gradeData.error && gradeData.error.includes("429")) {
@@ -149,12 +155,16 @@ export default function Grader() {
               }
             } catch (e) {
               attempt++;
-              if (e.message.includes("429")) {
+              if (e.name === 'AbortError') {
+                 console.error(`Timeout on page ${i+1}`);
+              }
+              
+              if (e.message && e.message.includes("429")) {
                 setProgressText(`Limit Google tercapai. Jeda otomatis 30 detik... (LJK ${i+1}/${pages.length})`);
                 await new Promise(r => setTimeout(r, 30000));
                 setProgressText(`Melanjutkan koreksi LJK ${i + 1} dari ${pages.length}...`);
               } else if (attempt === 3) {
-                 batchResArr.push({ page: i + 1, result: { error: "Gagal memproses setelah 3 percobaan." } });
+                 batchResArr.push({ page: i + 1, result: { error: "Gagal memproses setelah 3 percobaan (Koneksi bermasalah/Timeout)." } });
               }
             }
           }

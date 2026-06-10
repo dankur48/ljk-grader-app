@@ -114,8 +114,8 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         
     try:
         genai.configure(api_key=api_key)
-        # Beralih ke model yang lebih tinggi/terbaru karena kuota harian 2.5-lite sangat kecil (20/hari)
-        model = genai.GenerativeModel('gemini-3.5-flash')
+        # Gunakan model Gemini 1.5 Flash (standar terbaru dan stabil)
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Kirim potongan gambar (cropped) ke Gemini agar AI lebih fokus dan akurat
         pil_img = Image.fromarray(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
