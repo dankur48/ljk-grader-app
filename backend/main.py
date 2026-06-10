@@ -80,28 +80,33 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         x, y, w, h = cv2.boundingRect(cnt)
         bbox_area = w * h
         # Kotak Pilihan Ganda selalu berada di bagian ATAS halaman (mulai dari 0% - 45% atas)
-        if bbox_area > 30000 and y < img_h * 0.45:
+        if bbox_area > 20000 and y < img_h * 0.6:
             aspect_ratio = w / float(h)
-            if 2.0 < aspect_ratio < 6.0 and w > img_w * 0.7:
+            if 1.0 < aspect_ratio < 10.0 and w > img_w * 0.5:
                 if bbox_area > max_bbox_area:
                     max_bbox_area = bbox_area
                     pilihan_ganda_box = (x, y, w, h)
 
     if pilihan_ganda_box is None:
-        return {"error": "Tidak dapat menemukan kotak PILIHAN GANDA."}
+        # Fallback: Jika kotak gagal dideteksi, potong saja 70% bagian atas halaman sebagai tebakan aman
+        crop_y1 = 0
+        crop_y2 = int(img_h * 0.7)
+        crop_x1 = 0
+        crop_x2 = img_w
+        cropped_img = img[crop_y1:crop_y2, crop_x1:crop_x2]
+        pilihan_ganda_box = (0, 0, img_w, int(img_h * 0.7))
+    else:
+        x, y, w, h = pilihan_ganda_box
+        cv2.rectangle(debug_img, (x, y), (x+w, y+h), (255, 0, 0), 3)
 
-    x, y, w, h = pilihan_ganda_box
-    
-    cv2.rectangle(debug_img, (x, y), (x+w, y+h), (255, 0, 0), 3)
-
-    # --- 3. Potong gambar untuk Gemini ---
-    margin = 10
-    crop_y1 = max(0, y - margin)
-    crop_y2 = min(img.shape[0], y + h + margin)
-    crop_x1 = max(0, x - margin)
-    crop_x2 = min(img.shape[1], x + w + margin)
-    
-    cropped_img = img[crop_y1:crop_y2, crop_x1:crop_x2]
+        # --- 3. Potong gambar untuk Gemini ---
+        margin = 10
+        crop_y1 = max(0, y - margin)
+        crop_y2 = min(img.shape[0], y + h + margin)
+        crop_x1 = max(0, x - margin)
+        crop_x2 = min(img.shape[1], x + w + margin)
+        
+        cropped_img = img[crop_y1:crop_y2, crop_x1:crop_x2]
     
     raw_api_key = os.environ.get("GEMINI_API_KEY")
     api_key = raw_api_key.strip() if raw_api_key else None
