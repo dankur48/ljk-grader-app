@@ -35,6 +35,7 @@ export default function Grader() {
   // State for single save
   const [selectedStudentToSave, setSelectedStudentToSave] = useState('');
   const [singleSaveStatus, setSingleSaveStatus] = useState('');
+  const [singleEssayScore, setSingleEssayScore] = useState('');
   
   const fileInputRef = useRef(null);
 
@@ -261,12 +262,17 @@ export default function Grader() {
 
     const updatedStudents = students.map(s => {
       if (s.id.toString() === selectedStudentToSave) {
+        const pg = result.score;
+        const essay = parseFloat(singleEssayScore) || 0;
+        const total = pg + essay;
         return {
           ...s,
           nilai: {
             ...(s.nilai || {}),
             [selectedMapel]: {
-              score: result.score,
+              score_pg: pg,
+              score_essay: essay,
+              score: total,
               details: result.details,
               image_url: result.image_url
             }
@@ -277,7 +283,8 @@ export default function Grader() {
     });
 
     setStudents(updatedStudents);
-    setSingleSaveStatus(`Berhasil disimpan ke mapel ${selectedMapel}!`);
+    setSingleSaveStatus(`Berhasil menyimpan total nilai ${result.score + (parseFloat(singleEssayScore) || 0)} ke mapel ${selectedMapel}!`);
+    setSingleEssayScore('');
     setTimeout(() => setSingleSaveStatus(''), 3000);
   };
 
@@ -460,6 +467,15 @@ export default function Grader() {
                   ))
                 )}
               </select>
+              
+              <input 
+                type="number" 
+                placeholder="Nilai Essay (Opsional)" 
+                className="form-control"
+                style={{ width: '180px', margin: 0 }}
+                value={singleEssayScore}
+                onChange={(e) => setSingleEssayScore(e.target.value)}
+              />
               
               <button 
                 className="btn-primary" 
