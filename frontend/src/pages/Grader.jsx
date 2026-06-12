@@ -405,7 +405,7 @@ export default function Grader() {
                 <p className="text-muted" style={{ marginTop: '0.5rem' }}>Mode Koreksi Massal (Sesuai Urutan Absen)</p>
               </div>
             ) : (
-              <div style={{ position: 'relative', marginTop: '1rem', display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem 0' }}>
+              <div style={{ position: 'relative', marginTop: '1rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem', padding: '1rem 0' }}>
                 {preview.map((p, idx) => (
                   <img key={idx} src={p} alt={`Preview ${idx}`} style={{ height: '250px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'black' }} />
                 ))}
