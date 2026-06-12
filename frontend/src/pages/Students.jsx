@@ -142,6 +142,10 @@ export default function Students() {
     } else {
       data = displayedStudents.map(s => {
         const nilaiObj = s.nilai && selectedMapel && s.nilai[selectedMapel];
+        const scorePG = typeof nilaiObj === 'object' ? (nilaiObj.score_pg ?? nilaiObj.score ?? '') : '';
+        const scoreEssay = typeof nilaiObj === 'object' ? (nilaiObj.score_essay ?? 0) : '';
+        const scoreUH = typeof nilaiObj === 'object' ? (nilaiObj.score_uh ?? '') : '';
+        const scorePTS = typeof nilaiObj === 'object' ? (nilaiObj.score_pts ?? '') : '';
         const totalScore = typeof nilaiObj === 'object' ? nilaiObj.score : (nilaiObj || '');
         return {
           'Kelas': selectedClass,
@@ -149,8 +153,8 @@ export default function Students() {
           'Nomor Absen': s.absen,
           'Nama Siswa': s.nama,
           'Nilai PAS': totalScore,
-          'Nilai UH': '',
-          'Nilai PTS': ''
+          'Nilai UH': scoreUH,
+          'Nilai PTS': scorePTS
         };
       });
     }
@@ -224,8 +228,8 @@ export default function Students() {
   return (
     <div>
       <div className="page-header">
-        <h1>Buku Nilai & Data Murid</h1>
-        <p>Pilih Kelas dan Mata Pelajaran untuk melihat nilai.</p>
+        <h1>Buku Nilai & Rapotan</h1>
+        <p>Kelola data murid, Nilai PAS (LJK), Nilai UH, dan Nilai PTS dalam satu layar.</p>
       </div>
 
       <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -314,12 +318,14 @@ export default function Students() {
           <table className="data-table">
             <thead>
               <tr>
-                <th width="10%">No. Absen</th>
-                <th>Nama Siswa</th>
-                <th width="15%">Nilai PG</th>
-                <th width="15%">Nilai Essay</th>
-                <th width="15%">Total Nilai</th>
-                <th width="15%">Aksi</th>
+                <th width="8%">No. Absen</th>
+                <th width="20%">Nama Siswa</th>
+                <th width="12%" style={{textAlign: 'center'}}>Nilai PG</th>
+                <th width="12%" style={{textAlign: 'center'}}>Nilai Essay</th>
+                <th width="12%" style={{textAlign: 'center'}}>Nilai PAS (Total)</th>
+                <th width="12%" style={{textAlign: 'center', background: 'rgba(59, 130, 246, 0.1)'}}>Nilai UH</th>
+                <th width="12%" style={{textAlign: 'center', background: 'rgba(59, 130, 246, 0.1)'}}>Nilai PTS</th>
+                <th width="12%" style={{textAlign: 'center'}}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -334,6 +340,8 @@ export default function Students() {
                   
                   const score_pg = isObject ? (nilaiData.score_pg ?? nilaiData.score ?? 0) : (parseFloat(nilaiData) || 0);
                   const score_essay = isObject ? (nilaiData.score_essay ?? 0) : 0;
+                  const score_uh = isObject ? (nilaiData.score_uh ?? '') : '';
+                  const score_pts = isObject ? (nilaiData.score_pts ?? '') : '';
                   const total_score = isObject && nilaiData.score !== undefined ? nilaiData.score : score_pg + score_essay;
                   
                   const hasData = nilaiData !== undefined && nilaiData !== null && nilaiData !== '';
@@ -381,7 +389,7 @@ export default function Students() {
                             />
                           </td>
                           
-                          <td>
+                          <td style={{textAlign: 'center'}}>
                             {hasData ? (
                               <span style={{ fontWeight: 'bold', color: total_score >= 75 ? 'var(--success)' : 'var(--danger)', fontSize: '1.2rem' }}>{total_score}</span>
                             ) : (
@@ -389,7 +397,29 @@ export default function Students() {
                             )}
                           </td>
                           
-                          <td>
+                          <td style={{textAlign: 'center'}}>
+                            <input 
+                              type="number" 
+                              value={hasData ? score_uh : ''} 
+                              onChange={(e) => updateScore(student.id, 'score_uh', e.target.value)}
+                              placeholder="0"
+                              className="form-control"
+                              style={{ width: '60px', padding: '0.25rem', margin: 0, textAlign: 'center', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--primary-color)', color: 'white' }}
+                            />
+                          </td>
+
+                          <td style={{textAlign: 'center'}}>
+                            <input 
+                              type="number" 
+                              value={hasData ? score_pts : ''} 
+                              onChange={(e) => updateScore(student.id, 'score_pts', e.target.value)}
+                              placeholder="0"
+                              className="form-control"
+                              style={{ width: '60px', padding: '0.25rem', margin: 0, textAlign: 'center', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--primary-color)', color: 'white' }}
+                            />
+                          </td>
+                          
+                          <td style={{textAlign: 'center'}}>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <button onClick={() => handleEdit(student)} className="btn-secondary" style={{ padding: '0.5rem' }} title="Edit Identitas"><Edit2 size={16} /></button>
                               <button onClick={() => handleDelete(student.id)} className="btn-secondary" style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--danger)' }} title="Hapus Siswa"><Trash2 size={16} color="var(--danger)" /></button>

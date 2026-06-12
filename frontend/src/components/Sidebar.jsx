@@ -43,7 +43,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         </Link>
         <Link to="/students" className={`nav-item ${isActive('/students') ? 'active' : ''}`}>
           <Users size={20} />
-          <span>Data Murid</span>
+          <span>Buku Nilai & Rapot</span>
         </Link>
         <Link to="/keys" className={`nav-item ${isActive('/keys') ? 'active' : ''}`}>
           <KeyRound size={20} />
