@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Settings, CheckCircle, AlertCircle, Save } from 'lucide-react';
+import Select from 'react-select';
 
 export default function Grader() {
   const { mapelKeys, students, setStudents, classesList } = useAppContext();
@@ -470,26 +471,65 @@ export default function Grader() {
                 </p>
                 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <select 
-                    className="form-control"
-                    style={{ flex: 1, minWidth: '200px' }}
-                    value={saveSelections[index] || ''}
-                    onChange={(e) => setSaveSelections(prev => ({ ...prev, [index]: e.target.value }))}
-                  >
-                    <option value="" disabled>-- Pilih Nama Siswa --</option>
-                    {classStudents.length === 0 ? (
-                      <option value="" disabled>Belum ada siswa di kelas ini</option>
-                    ) : (
-                      classStudents.map(s => {
+                  <div style={{ flex: 1, minWidth: '250px' }}>
+                    <Select
+                      options={classStudents.map(s => {
                         const hasGrade = s.nilai && s.nilai[selectedMapel] !== undefined;
-                        return (
-                          <option key={s.id} value={s.id} style={{ color: 'black' }}>
-                            {hasGrade ? '✅ ' : ''}Absen {s.absen} - {s.nama} {hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}
-                          </option>
-                        );
-                      })
-                    )}
-                  </select>
+                        return {
+                          value: s.id,
+                          label: `${hasGrade ? '✅ ' : ''}Absen ${s.absen} - ${s.nama} ${hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}`
+                        };
+                      })}
+                      value={saveSelections[index] ? {
+                        value: saveSelections[index],
+                        label: (() => {
+                          const s = classStudents.find(stu => stu.id.toString() === saveSelections[index].toString());
+                          if (!s) return '';
+                          const hasGrade = s.nilai && s.nilai[selectedMapel] !== undefined;
+                          return `${hasGrade ? '✅ ' : ''}Absen ${s.absen} - ${s.nama} ${hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}`;
+                        })()
+                      } : null}
+                      onChange={(selectedOption) => setSaveSelections(prev => ({ ...prev, [index]: selectedOption ? selectedOption.value : '' }))}
+                      placeholder="🔍 Ketik atau Pilih Nama Siswa..."
+                      isSearchable={true}
+                      isClearable={true}
+                      noOptionsMessage={() => "Tidak ada siswa ditemukan"}
+                      styles={{
+                        control: (baseStyles, state) => ({
+                          ...baseStyles,
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          borderColor: state.isFocused ? 'var(--primary-color)' : 'var(--glass-border)',
+                          color: 'var(--text-color)',
+                          boxShadow: state.isFocused ? '0 0 0 1px var(--primary-color)' : 'none',
+                          '&:hover': {
+                            borderColor: 'var(--primary-color)'
+                          }
+                        }),
+                        singleValue: (baseStyles) => ({
+                          ...baseStyles,
+                          color: 'white',
+                        }),
+                        input: (baseStyles) => ({
+                          ...baseStyles,
+                          color: 'white',
+                        }),
+                        menu: (baseStyles) => ({
+                          ...baseStyles,
+                          backgroundColor: '#1e1e2d',
+                          border: '1px solid var(--glass-border)',
+                          zIndex: 100
+                        }),
+                        option: (baseStyles, state) => ({
+                          ...baseStyles,
+                          backgroundColor: state.isFocused ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                          color: 'white',
+                          '&:active': {
+                            backgroundColor: 'rgba(59, 130, 246, 0.4)'
+                          }
+                        }),
+                      }}
+                    />
+                  </div>
                   
                   <input 
                     type="number" 
