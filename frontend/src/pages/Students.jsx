@@ -154,7 +154,8 @@ export default function Students() {
           'Nama Siswa': s.nama,
           'Nilai PAS': totalScore,
           'Nilai UH': scoreUH,
-          'Nilai PTS': scorePTS
+          'Nilai PTS': scorePTS,
+          'Nilai Akhir Rapor': ((parseFloat(totalScore)||0) + (parseFloat(scoreUH)||0) + (parseFloat(scorePTS)||0)) / 3
         };
       });
     }
@@ -325,7 +326,8 @@ export default function Students() {
                 <th width="12%" style={{textAlign: 'center'}}>Nilai PAS (Total)</th>
                 <th width="12%" style={{textAlign: 'center', background: 'rgba(59, 130, 246, 0.1)'}}>Nilai UH</th>
                 <th width="12%" style={{textAlign: 'center', background: 'rgba(59, 130, 246, 0.1)'}}>Nilai PTS</th>
-                <th width="12%" style={{textAlign: 'center'}}>Aksi</th>
+                <th width="12%" style={{textAlign: 'center', background: 'rgba(16, 185, 129, 0.1)'}}>Nilai Rapor</th>
+                <th width="10%" style={{textAlign: 'center'}}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -343,6 +345,11 @@ export default function Students() {
                   const score_uh = isObject ? (nilaiData.score_uh ?? '') : '';
                   const score_pts = isObject ? (nilaiData.score_pts ?? '') : '';
                   const total_score = isObject && nilaiData.score !== undefined ? nilaiData.score : score_pg + score_essay;
+                  
+                  const val_uh = parseFloat(score_uh) || 0;
+                  const val_pts = parseFloat(score_pts) || 0;
+                  const val_pas = parseFloat(total_score) || 0;
+                  const nilai_rapor = ((val_pas + val_uh + val_pts) / 3).toFixed(1);
                   
                   const hasData = nilaiData !== undefined && nilaiData !== null && nilaiData !== '';
                   
@@ -417,6 +424,14 @@ export default function Students() {
                               className="form-control"
                               style={{ width: '60px', padding: '0.25rem', margin: 0, textAlign: 'center', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid var(--primary-color)', color: 'white' }}
                             />
+                          </td>
+
+                          <td style={{textAlign: 'center'}}>
+                            {hasData ? (
+                              <span style={{ fontWeight: 'bold', color: nilai_rapor >= 75 ? 'var(--success)' : 'var(--warning)', fontSize: '1.2rem' }}>{nilai_rapor}</span>
+                            ) : (
+                              <span className="text-muted">-</span>
+                            )}
                           </td>
                           
                           <td style={{textAlign: 'center'}}>
