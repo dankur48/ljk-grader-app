@@ -157,12 +157,8 @@ Contoh output normal:
                 text_response = response.text.strip()
                 break # Berhasil, keluar dari loop
             except Exception as e:
-                err_msg = str(e)
-                if "429" in err_msg or "quota" in err_msg.lower():
-                    last_error = err_msg
-                    continue # Coba model berikutnya
-                else:
-                    raise e # Error lain (bukan limit), langsung lempar
+                last_error = str(e)
+                continue # Coba model berikutnya apapun errornya (429, 503, dll)
                     
         if text_response is None:
             # Semua model sudah dicoba dan limit semua

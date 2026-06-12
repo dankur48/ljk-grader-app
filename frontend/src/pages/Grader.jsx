@@ -431,6 +431,17 @@ export default function Grader() {
         </div>
       )}
 
+      {/* Single Image Error */}
+      {result && result.error && (
+        <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px' }}>
+          <h3 style={{ color: 'var(--danger)', marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertCircle size={20} />
+            Koreksi Gagal
+          </h3>
+          <p style={{ margin: 0, color: 'var(--text-color)', lineHeight: '1.5' }}>{result.error}</p>
+        </div>
+      )}
+
       {/* Single Image Result */}
       {result && result.status === 'success' && (
         <section className="glass-card" style={{ marginTop: '2rem' }}>
