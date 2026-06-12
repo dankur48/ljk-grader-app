@@ -136,22 +136,18 @@ export default function Students() {
     let data;
     if (displayedStudents.length === 0) {
       data = [
-        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PG': '', 'Nilai Essay': '', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' },
-        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PG': '', 'Nilai Essay': '', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' }
+        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' },
+        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' }
       ];
     } else {
       data = displayedStudents.map(s => {
         const nilaiObj = s.nilai && selectedMapel && s.nilai[selectedMapel];
-        const scorePG = typeof nilaiObj === 'object' ? (nilaiObj.score_pg ?? nilaiObj.score ?? '') : '';
-        const scoreEssay = typeof nilaiObj === 'object' ? (nilaiObj.score_essay ?? 0) : '';
         const totalScore = typeof nilaiObj === 'object' ? nilaiObj.score : (nilaiObj || '');
         return {
           'Kelas': selectedClass,
           'Mata Pelajaran': selectedMapel,
           'Nomor Absen': s.absen,
           'Nama Siswa': s.nama,
-          'Nilai PG': scorePG,
-          'Nilai Essay': scoreEssay,
           'Nilai PAS': totalScore,
           'Nilai UH': '',
           'Nilai PTS': ''
