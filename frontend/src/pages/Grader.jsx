@@ -271,7 +271,7 @@ export default function Grader() {
     if (!studentId || !res) return;
     
     setStudents(prev => prev.map(s => {
-      if (s.id === studentId) {
+      if (s.id.toString() === studentId.toString()) {
         return {
           ...s,
           nilai: {
