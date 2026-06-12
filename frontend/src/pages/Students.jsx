@@ -136,18 +136,22 @@ export default function Students() {
     let data;
     if (displayedStudents.length === 0) {
       data = [
-        { 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai': '', 'Mapel Terakhir': '' },
-        { 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai': '', 'Mapel Terakhir': '' }
+        { 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PG': '', 'Nilai Essay': '', 'Total Nilai': '', 'Mata Pelajaran': '' },
+        { 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PG': '', 'Nilai Essay': '', 'Total Nilai': '', 'Mata Pelajaran': '' }
       ];
     } else {
       data = displayedStudents.map(s => {
         const nilaiObj = s.nilai && selectedMapel && s.nilai[selectedMapel];
-        const finalScore = typeof nilaiObj === 'object' ? nilaiObj.score : (nilaiObj || '');
+        const scorePG = typeof nilaiObj === 'object' ? (nilaiObj.score_pg ?? nilaiObj.score ?? '') : '';
+        const scoreEssay = typeof nilaiObj === 'object' ? (nilaiObj.score_essay ?? 0) : '';
+        const totalScore = typeof nilaiObj === 'object' ? nilaiObj.score : (nilaiObj || '');
         return {
           'Nomor Absen': s.absen,
           'Nama Siswa': s.nama,
-          'Nilai': finalScore,
-          'Mapel Terakhir': selectedMapel
+          'Nilai PG': scorePG,
+          'Nilai Essay': scoreEssay,
+          'Total Nilai': totalScore,
+          'Mata Pelajaran': selectedMapel
         };
       });
     }
