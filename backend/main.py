@@ -119,8 +119,16 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         
     try:
         genai.configure(api_key=api_key)
-        # Gunakan model Gemini 2.5 Flash Lite agar kuota harian jauh lebih besar
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        
+        # Daftar model yang akan dipinjam kuotanya secara bergantian jika salah satu habis (Limit 20/hari per model)
+        fallback_models = [
+            'gemini-2.5-flash-lite',
+            'gemini-2.0-flash-lite',
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-flash-lite-latest',
+            'gemini-3.5-flash'
+        ]
         
         # Kirim potongan gambar (cropped) ke Gemini agar AI lebih fokus dan akurat
         pil_img = Image.fromarray(cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB))
@@ -138,9 +146,28 @@ Ikuti instruksi berikut dengan sangat teliti:
 Contoh output normal:
 {"1": "A", "2": "C", "3": "GANDA", "4": "B", "5": "E", "6": "A", "7": "D", "8": "E", "9": null, "10": "A", "11": "B", "12": "C", "13": "D", "14": "E", "15": "A", "16": "B", "17": "C", "18": "D", "19": "E", "20": "A"}
 """
-        response = model.generate_content([prompt, pil_img])
-        text_response = response.text.strip()
         
+        text_response = None
+        last_error = None
+        
+        for model_name in fallback_models:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content([prompt, pil_img])
+                text_response = response.text.strip()
+                break # Berhasil, keluar dari loop
+            except Exception as e:
+                err_msg = str(e)
+                if "429" in err_msg or "quota" in err_msg.lower():
+                    last_error = err_msg
+                    continue # Coba model berikutnya
+                else:
+                    raise e # Error lain (bukan limit), langsung lempar
+                    
+        if text_response is None:
+            # Semua model sudah dicoba dan limit semua
+            return {"error": f"Semua kuota model habis. Silakan gunakan API Key lain atau tunggu besok. Error terakhir: {last_error}"}
+            
         if text_response.startswith('```json'):
             text_response = text_response[7:-3]
         elif text_response.startswith('```'):
