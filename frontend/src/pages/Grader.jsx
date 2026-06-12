@@ -460,11 +460,14 @@ export default function Grader() {
                 {classStudents.length === 0 ? (
                   <option value="" disabled>Belum ada siswa di kelas ini</option>
                 ) : (
-                  classStudents.map(s => (
-                    <option key={s.id} value={s.id} style={{ color: 'black' }}>
-                      Absen {s.absen} - {s.nama}
-                    </option>
-                  ))
+                  classStudents.map(s => {
+                    const hasGrade = s.nilai && s.nilai[selectedMapel] !== undefined;
+                    return (
+                      <option key={s.id} value={s.id} style={{ color: 'black' }}>
+                        {hasGrade ? '✅ ' : ''}Absen {s.absen} - {s.nama} {hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}
+                      </option>
+                    );
+                  })
                 )}
               </select>
               
