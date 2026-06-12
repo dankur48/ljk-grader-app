@@ -136,8 +136,8 @@ export default function Students() {
     let data;
     if (displayedStudents.length === 0) {
       data = [
-        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' },
-        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' }
+        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '', 'Nilai Akhir Rapor': '' },
+        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '', 'Nilai Akhir Rapor': '' }
       ];
     } else {
       data = displayedStudents.map(s => {
@@ -155,7 +155,7 @@ export default function Students() {
           'Nilai PAS': totalScore,
           'Nilai UH': scoreUH,
           'Nilai PTS': scorePTS,
-          'Nilai Akhir Rapor': ((parseFloat(totalScore)||0) + (parseFloat(scoreUH)||0) + (parseFloat(scorePTS)||0)) / 3
+          'Nilai Akhir Rapor': (((parseFloat(totalScore)||0) + (parseFloat(scoreUH)||0) + (parseFloat(scorePTS)||0)) / 3).toFixed(1)
         };
       });
     }
