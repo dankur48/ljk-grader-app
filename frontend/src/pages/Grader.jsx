@@ -22,20 +22,20 @@ export default function Grader() {
   const [selectedMapel, setSelectedMapel] = useState(Object.keys(mapelKeys)[0] || '');
   const [maxScore, setMaxScore] = useState(100);
   
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [file, setFile] = useState([]); // Berubah jadi array
+  const [preview, setPreview] = useState([]); // Array of urls
   const [isPdf, setIsPdf] = useState(false);
   const [loading, setLoading] = useState(false);
   const [progressText, setProgressText] = useState('');
-  const [result, setResult] = useState(null);
+  const [results, setResults] = useState([]); // Array of results
   const [batchResults, setBatchResults] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
   
   // State for single save
-  const [selectedStudentToSave, setSelectedStudentToSave] = useState('');
-  const [singleSaveStatus, setSingleSaveStatus] = useState('');
-  const [singleEssayScore, setSingleEssayScore] = useState('');
+  const [saveSelections, setSaveSelections] = useState({});
+  const [essayScores, setEssayScores] = useState({});
+  const [saveStatuses, setSaveStatuses] = useState({});
   
   const fileInputRef = useRef(null);
 
@@ -53,37 +53,43 @@ export default function Grader() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(Array.from(e.dataTransfer.files));
     }
   };
 
   const handleChange = (e) => {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(Array.from(e.target.files));
     }
   };
 
-  const handleFile = (selectedFile) => {
-    setFile(selectedFile);
-    setResult(null);
+  const handleFiles = (selectedFiles) => {
+    setResults([]);
     setBatchResults(null);
     setSyncStatus('');
-    setSingleSaveStatus('');
-    setSelectedStudentToSave('');
+    setSaveStatuses({});
+    setSaveSelections({});
+    setEssayScores({});
     
-    if (selectedFile.type === 'application/pdf') {
+    // Jika ada PDF, gunakan PDF saja
+    const pdfFile = selectedFiles.find(f => f.type === 'application/pdf');
+    if (pdfFile) {
+      setFile([pdfFile]);
       setIsPdf(true);
-      setPreview(null);
+      setPreview([]);
     } else {
+      // Ambil maksimal 5 file gambar
+      const imgFiles = selectedFiles.slice(0, 5);
+      setFile(imgFiles);
       setIsPdf(false);
-      setPreview(URL.createObjectURL(selectedFile));
+      setPreview(imgFiles.map(f => URL.createObjectURL(f)));
     }
   };
 
   const handleGrade = async () => {
-    if (!file || !selectedMapel || !selectedClass) {
+    if (file.length === 0 || !selectedMapel || !selectedClass) {
       alert("Pastikan Anda sudah memilih Kelas, Mata Pelajaran, dan mengunggah file.");
       return;
     }
@@ -91,7 +97,7 @@ export default function Grader() {
     setLoading(true);
     setProgressText('Mempersiapkan data...');
     setSyncStatus('');
-    setSingleSaveStatus('');
+    setSaveStatuses({});
     
     const pointsPerQuestion = maxScore / 20.0;
     const currentKey = mapelKeys[selectedMapel];
@@ -105,7 +111,7 @@ export default function Grader() {
       if (isPdf) {
         setProgressText('Membaca file PDF dan memisahkan halaman...');
         const splitFormData = new FormData();
-        splitFormData.append('file', file);
+        splitFormData.append('file', file[0]);
         
         const splitRes = await fetch(`${API_URL}/api/split-pdf`, {
           method: 'POST',
@@ -179,22 +185,26 @@ export default function Grader() {
         syncBatchToStudents(batchResArr);
         
       } else {
-        setProgressText('Menganalisis LJK...');
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('points_per_question', pointsPerQuestion);
-        formData.append('answer_key', answerKeyStr);
-        
-        const response = await fetch(`${API_URL}/api/grade`, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        const data = await response.json();
-        setResult(data);
-        if (data.status === 'success') {
-          setSelectedStudentToSave('');
+        let resArr = [];
+        for (let i = 0; i < file.length; i++) {
+          setProgressText(file.length > 1 ? `Menganalisis LJK ${i + 1} dari ${file.length}...` : 'Menganalisis LJK...');
+          const formData = new FormData();
+          formData.append('file', file[i]);
+          formData.append('points_per_question', pointsPerQuestion);
+          formData.append('answer_key', answerKeyStr);
+          
+          try {
+            const response = await fetch(`${API_URL}/api/grade`, {
+              method: 'POST',
+              body: formData,
+            });
+            const data = await response.json();
+            resArr.push(data);
+          } catch (err) {
+            resArr.push({ error: err.message });
+          }
         }
+        setResults(resArr);
       }
     } catch (error) {
       console.error("Error grading:", error);
@@ -254,38 +264,32 @@ export default function Grader() {
     });
   };
 
-  const handleSaveSingleResult = () => {
-    if (!selectedStudentToSave) {
-      alert("Silakan pilih nama siswa terlebih dahulu.");
-      return;
-    }
-
-    const updatedStudents = students.map(s => {
-      if (s.id.toString() === selectedStudentToSave) {
-        const pg = result.score;
-        const essay = parseFloat(singleEssayScore) || 0;
-        const total = pg + essay;
+  const handleSaveSingleResult = (index) => {
+    const studentId = saveSelections[index];
+    const eScore = essayScores[index] || 0;
+    const res = results[index];
+    if (!studentId || !res) return;
+    
+    setStudents(prev => prev.map(s => {
+      if (s.id === studentId) {
         return {
           ...s,
           nilai: {
             ...(s.nilai || {}),
             [selectedMapel]: {
-              score_pg: pg,
-              score_essay: essay,
-              score: total,
-              details: result.details,
-              image_url: result.image_url
+              score_pg: res.score,
+              score_essay: parseFloat(eScore),
+              score: (parseFloat(res.score) || 0) + parseFloat(eScore),
+              details: res.details,
+              image_url: res.image_url
             }
           }
         };
       }
       return s;
-    });
-
-    setStudents(updatedStudents);
-    setSingleSaveStatus(`Berhasil menyimpan total nilai ${result.score + (parseFloat(singleEssayScore) || 0)} ke mapel ${selectedMapel}!`);
-    setSingleEssayScore('');
-    setTimeout(() => setSingleSaveStatus(''), 3000);
+    }));
+    
+    setSaveStatuses(prev => ({ ...prev, [index]: 'Tersimpan!' }));
   };
 
   if (Object.keys(mapelKeys).length === 0) {
@@ -364,7 +368,7 @@ export default function Grader() {
       <section className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
         <h2 style={{ marginBottom: '1rem' }}>Unggah LJK (Gambar atau PDF)</h2>
         
-        {!file ? (
+        {!file || file.length === 0 ? (
           <div 
             className={`upload-area ${dragActive ? "drag-active" : ""}`}
             onDragEnter={handleDrag}
@@ -379,9 +383,11 @@ export default function Grader() {
             <input 
               ref={fileInputRef}
               type="file" 
-              accept="image/*, application/pdf" 
+              accept="image/*, .pdf" 
+              multiple
               onChange={handleChange} 
               style={{ display: 'none' }}
+              id="file-upload"
             />
           </div>
         ) : (
@@ -389,19 +395,19 @@ export default function Grader() {
             {isPdf ? (
               <div style={{ textAlign: 'center' }}>
                 <h1 style={{ fontSize: '4rem', margin: 0 }}>📑</h1>
-                <h3 style={{ marginTop: '1rem' }}>{file.name}</h3>
+                <h3 style={{ marginTop: '1rem' }}>{file[0].name}</h3>
                 <p className="text-muted" style={{ marginTop: '0.5rem' }}>Mode Koreksi Massal (Sesuai Urutan Absen)</p>
               </div>
             ) : (
-              <img 
-                src={preview} 
-                alt="Preview" 
-                style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
-              />
+              <div style={{ position: 'relative', marginTop: '1rem', display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem 0' }}>
+                {preview.map((p, idx) => (
+                  <img key={idx} src={p} alt={`Preview ${idx}`} style={{ height: '250px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'black' }} />
+                ))}
+              </div>
             )}
             
             <button 
-              onClick={() => { setFile(null); setPreview(null); setResult(null); setBatchResults(null); }}
+              onClick={() => { setFile([]); setPreview([]); setResults([]); setBatchResults(null); }}
               style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
             >
               Hapus File
@@ -412,7 +418,7 @@ export default function Grader() {
         <button 
           className="btn-primary" 
           onClick={handleGrade}
-          disabled={!file || loading}
+          disabled={file.length === 0 || loading}
         >
           {loading ? (
             <span className="loader" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
@@ -431,107 +437,113 @@ export default function Grader() {
         </div>
       )}
 
-      {/* Single Image Error */}
-      {result && result.error && (
-        <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px' }}>
-          <h3 style={{ color: 'var(--danger)', marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <AlertCircle size={20} />
-            Koreksi Gagal
-          </h3>
-          <p style={{ margin: 0, color: 'var(--text-color)', lineHeight: '1.5' }}>{result.error}</p>
-        </div>
-      )}
-
-      {/* Single Image Result */}
-      {result && result.status === 'success' && (
-        <section className="glass-card" style={{ marginTop: '2rem' }}>
-          <div className="results-header">
-            <h2>Hasil Koreksi</h2>
-            <div className="score-display">{result.score}</div>
-          </div>
-          
-          {/* Form Simpan Nilai Satuan */}
-          <div style={{ marginBottom: '2rem', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-            <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Save size={20} color="var(--primary-color)" />
-              Simpan ke Buku Nilai
-            </h3>
-            <p className="text-muted" style={{ marginBottom: '1rem' }}>
-              Pilih nama siswa dari kelas <b>{selectedClass}</b> untuk menyimpan nilai <b>{result.score}</b> ini ke mata pelajaran <b>{selectedMapel}</b>.
-            </p>
-            
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <select 
-                className="form-control"
-                style={{ flex: 1, minWidth: '200px' }}
-                value={selectedStudentToSave}
-                onChange={(e) => setSelectedStudentToSave(e.target.value)}
-              >
-                <option value="" disabled>-- Pilih Nama Siswa --</option>
-                {classStudents.length === 0 ? (
-                  <option value="" disabled>Belum ada siswa di kelas ini</option>
-                ) : (
-                  classStudents.map(s => {
-                    const hasGrade = s.nilai && s.nilai[selectedMapel] !== undefined;
-                    return (
-                      <option key={s.id} value={s.id} style={{ color: 'black' }}>
-                        {hasGrade ? '✅ ' : ''}Absen {s.absen} - {s.nama} {hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}
-                      </option>
-                    );
-                  })
-                )}
-              </select>
-              
-              <input 
-                type="number" 
-                placeholder="Nilai Essay (Opsional)" 
-                className="form-control"
-                style={{ width: '180px', margin: 0 }}
-                value={singleEssayScore}
-                onChange={(e) => setSingleEssayScore(e.target.value)}
-              />
-              
-              <button 
-                className="btn-primary" 
-                style={{ margin: 0, width: 'auto' }}
-                onClick={handleSaveSingleResult}
-                disabled={!selectedStudentToSave}
-              >
-                Simpan Nilai
-              </button>
-              
-              {singleSaveStatus && (
-                <span style={{ color: 'var(--success)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <CheckCircle size={16} /> {singleSaveStatus}
-                </span>
-              )}
+      {/* Single Image Results */}
+      {results && results.length > 0 && results.map((res, index) => {
+        if (res.error) {
+          return (
+            <div key={index} style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px' }}>
+              <h3 style={{ color: 'var(--danger)', marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertCircle size={20} />
+                Koreksi Gagal (Gambar {index + 1})
+              </h3>
+              <p style={{ margin: 0, color: 'var(--text-color)', lineHeight: '1.5' }}>{res.error}</p>
             </div>
-          </div>
-
-          <div className="results-grid">
-            {result.details.map((item) => (
-              <div key={item.number} className={`result-item ${item.is_correct ? 'correct' : 'incorrect'}`}>
-                <span className="result-num">{item.number}.</span>
-                <span className={`result-ans ${item.is_correct ? 'correct' : 'incorrect'}`}>
-                  {item.student_answer || '-'}
-                </span>
-                {!item.is_correct && (
-                   <span style={{ fontSize: '0.8rem', color: 'var(--success)', marginLeft: '10px' }}>
-                     (Kunci: {item.correct_answer})
-                   </span>
-                )}
+          );
+        }
+        
+        if (res.status === 'success') {
+          return (
+            <section key={index} className="glass-card" style={{ marginTop: '2rem' }}>
+              <div className="results-header">
+                <h2>Hasil Koreksi (Gambar {index + 1})</h2>
+                <div className="score-display">{res.score}</div>
               </div>
-            ))}
-          </div>
+              
+              {/* Form Simpan Nilai Satuan */}
+              <div style={{ marginBottom: '2rem', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Save size={20} color="var(--primary-color)" />
+                  Simpan ke Buku Nilai
+                </h3>
+                <p className="text-muted" style={{ marginBottom: '1rem' }}>
+                  Pilih nama siswa dari kelas <b>{selectedClass}</b> untuk menyimpan nilai <b>{res.score}</b> ini ke mata pelajaran <b>{selectedMapel}</b>.
+                </p>
+                
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select 
+                    className="form-control"
+                    style={{ flex: 1, minWidth: '200px' }}
+                    value={saveSelections[index] || ''}
+                    onChange={(e) => setSaveSelections(prev => ({ ...prev, [index]: e.target.value }))}
+                  >
+                    <option value="" disabled>-- Pilih Nama Siswa --</option>
+                    {classStudents.length === 0 ? (
+                      <option value="" disabled>Belum ada siswa di kelas ini</option>
+                    ) : (
+                      classStudents.map(s => {
+                        const hasGrade = s.nilai && s.nilai[selectedMapel] !== undefined;
+                        return (
+                          <option key={s.id} value={s.id} style={{ color: 'black' }}>
+                            {hasGrade ? '✅ ' : ''}Absen {s.absen} - {s.nama} {hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}
+                          </option>
+                        );
+                      })
+                    )}
+                  </select>
+                  
+                  <input 
+                    type="number" 
+                    placeholder="Nilai Essay (Opsional)" 
+                    className="form-control"
+                    style={{ width: '180px', margin: 0 }}
+                    value={essayScores[index] || ''}
+                    onChange={(e) => setEssayScores(prev => ({ ...prev, [index]: e.target.value }))}
+                  />
+                  
+                  <button 
+                    className="btn-primary" 
+                    style={{ margin: 0, width: 'auto' }}
+                    onClick={() => handleSaveSingleResult(index)}
+                    disabled={!saveSelections[index]}
+                  >
+                    Simpan Nilai
+                  </button>
+                  
+                  {saveStatuses[index] && (
+                    <span style={{ color: 'var(--success)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <CheckCircle size={16} /> {saveStatuses[index]}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-          {result.debug_url && (
-            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
-              <h3>Debug View (Visualisasi Deteksi AI)</h3>
-              <img src={getFullUrl(result.debug_url)} alt="Debug Image" style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} />
-            </div>
-          )}
-        </section>
-      )}
+              <div className="results-grid">
+                {res.details.map((item) => (
+                  <div key={item.number} className={`result-item ${item.is_correct ? 'correct' : 'incorrect'}`}>
+                    <span className="result-num">{item.number}.</span>
+                    <span className={`result-ans ${item.is_correct ? 'correct' : 'incorrect'}`}>
+                      {item.student_answer || '-'}
+                    </span>
+                    {!item.is_correct && (
+                       <span style={{ fontSize: '0.8rem', color: 'var(--success)', marginLeft: '10px' }}>
+                         (Kunci: {item.correct_answer})
+                       </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {res.debug_url && (
+                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+                  <h3>Debug View (Visualisasi Deteksi AI)</h3>
+                  <img src={getFullUrl(res.debug_url)} alt="Debug Image" style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--glass-border)' }} />
+                </div>
+              )}
+            </section>
+          );
+        }
+        return null;
+      })}
 
       {/* Batch PDF Results */}
       {batchResults && (
@@ -564,12 +576,7 @@ export default function Grader() {
         </section>
       )}
       
-      {result && result.error && (
-        <section className="glass-card" style={{ marginTop: '2rem', borderColor: 'var(--danger)' }}>
-          <h2 style={{ color: 'var(--danger)' }}>Error</h2>
-          <p>{result.error}</p>
-        </section>
-      )}
+      {/* (Removed old single error) */}
     </div>
   );
 }
