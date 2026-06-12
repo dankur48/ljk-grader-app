@@ -136,8 +136,8 @@ export default function Students() {
     let data;
     if (displayedStudents.length === 0) {
       data = [
-        { 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PG': '', 'Nilai Essay': '', 'Total Nilai': '', 'Mata Pelajaran': '' },
-        { 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PG': '', 'Nilai Essay': '', 'Total Nilai': '', 'Mata Pelajaran': '' }
+        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PG': '', 'Nilai Essay': '', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' },
+        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PG': '', 'Nilai Essay': '', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '' }
       ];
     } else {
       data = displayedStudents.map(s => {
@@ -146,12 +146,15 @@ export default function Students() {
         const scoreEssay = typeof nilaiObj === 'object' ? (nilaiObj.score_essay ?? 0) : '';
         const totalScore = typeof nilaiObj === 'object' ? nilaiObj.score : (nilaiObj || '');
         return {
+          'Kelas': selectedClass,
+          'Mata Pelajaran': selectedMapel,
           'Nomor Absen': s.absen,
           'Nama Siswa': s.nama,
           'Nilai PG': scorePG,
           'Nilai Essay': scoreEssay,
-          'Total Nilai': totalScore,
-          'Mata Pelajaran': selectedMapel
+          'Nilai PAS': totalScore,
+          'Nilai UH': '',
+          'Nilai PTS': ''
         };
       });
     }
