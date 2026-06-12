@@ -81,8 +81,8 @@ export default function Grader() {
       setIsPdf(true);
       setPreview([]);
     } else {
-      // Ambil maksimal 5 file gambar
-      const imgFiles = selectedFiles.slice(0, 5);
+      // Ambil maksimal 10 file gambar
+      const imgFiles = selectedFiles.slice(0, 10);
       setFile(imgFiles);
       setIsPdf(false);
       setPreview(imgFiles.map(f => URL.createObjectURL(f)));
@@ -203,6 +203,11 @@ export default function Grader() {
             resArr.push(data);
           } catch (err) {
             resArr.push({ error: err.message });
+          }
+          
+          // Beri jeda 2 detik antar gambar untuk mencegah rate limit
+          if (i < file.length - 1) {
+            await new Promise(r => setTimeout(r, 2000));
           }
         }
         setResults(resArr);
