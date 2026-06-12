@@ -80,9 +80,9 @@ def process_ljk(image_bytes, answer_key, points_per_question=5, save_debug=True,
         x, y, w, h = cv2.boundingRect(cnt)
         bbox_area = w * h
         # Kotak Pilihan Ganda selalu berada di bagian ATAS halaman (mulai dari 0% - 45% atas)
-        if bbox_area > 20000 and y < img_h * 0.6:
+        if bbox_area > 30000 and y < img_h * 0.45:
             aspect_ratio = w / float(h)
-            if 1.0 < aspect_ratio < 10.0 and w > img_w * 0.5:
+            if 2.0 < aspect_ratio < 6.0 and w > img_w * 0.7:
                 if bbox_area > max_bbox_area:
                     max_bbox_area = bbox_area
                     pilihan_ganda_box = (x, y, w, h)
