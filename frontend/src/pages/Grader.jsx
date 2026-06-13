@@ -4,7 +4,7 @@ import { Settings, CheckCircle, AlertCircle, Save } from 'lucide-react';
 import Select from 'react-select';
 
 export default function Grader() {
-  const { mapelKeys, students, setStudents, classesList } = useAppContext();
+  const { mapelKeys, students, setStudents, classesList, globalClass, setGlobalClass, globalMapel, setGlobalMapel } = useAppContext();
   
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -19,8 +19,27 @@ export default function Grader() {
     return url;
   };
   
-  const [selectedClass, setSelectedClass] = useState(classesList[0] || '');
-  const [selectedMapel, setSelectedMapel] = useState(Object.keys(mapelKeys)[0] || '');
+  const [selectedClass, setSelectedClassLocal] = useState('');
+  const [selectedMapel, setSelectedMapelLocal] = useState('');
+
+  // Sync with global state
+  React.useEffect(() => {
+    if (!globalClass && classesList.length > 0) setGlobalClass(classesList[0]);
+    if (!globalMapel && Object.keys(mapelKeys).length > 0) setGlobalMapel(Object.keys(mapelKeys)[0]);
+  }, [classesList, mapelKeys]);
+
+  const currentClass = selectedClass || globalClass || (classesList[0] || '');
+  const currentMapel = selectedMapel || globalMapel || (Object.keys(mapelKeys)[0] || '');
+
+  const setSelectedClass = (val) => {
+    setSelectedClassLocal(val);
+    setGlobalClass(val);
+  };
+  const setSelectedMapel = (val) => {
+    setSelectedMapelLocal(val);
+    setGlobalMapel(val);
+  };
+
   const [maxScore, setMaxScore] = useState(100);
   
   const [file, setFile] = useState([]); // Berubah jadi array
@@ -90,7 +109,7 @@ export default function Grader() {
   };
 
   const handleGrade = async () => {
-    if (file.length === 0 || !selectedMapel || !selectedClass) {
+    if (file.length === 0 || !currentMapel || !currentClass) {
       alert("Pastikan Anda sudah memilih Kelas, Mata Pelajaran, dan mengunggah file.");
       return;
     }
@@ -101,7 +120,7 @@ export default function Grader() {
     setSaveStatuses({});
     
     const pointsPerQuestion = maxScore / 20.0;
-    const currentKey = mapelKeys[selectedMapel];
+    const currentKey = mapelKeys[currentMapel];
     const keyDict = currentKey.reduce((acc, curr) => {
       acc[curr.number.toString()] = curr.answer;
       return acc;
@@ -224,18 +243,18 @@ export default function Grader() {
   const syncBatchToStudents = (batchData) => {
     setStudents(prevStudents => {
       const classStudents = prevStudents
-        .filter(s => s.kelas === selectedClass)
+        .filter(s => s.kelas === currentClass)
         .sort((a, b) => parseInt(a.absen) - parseInt(b.absen));
         
       if (classStudents.length === 0) {
-        setSyncStatus(`Gagal tersinkronisasi: Tidak ada murid yang terdaftar di kelas ${selectedClass}. Silakan isi Data Murid terlebih dahulu.`);
+        setSyncStatus(`Gagal tersinkronisasi: Tidak ada murid yang terdaftar di kelas ${currentClass}. Silakan isi Data Murid terlebih dahulu.`);
         return prevStudents;
       }
 
       let updatedCount = 0;
       
       const updatedStudents = prevStudents.map((student) => {
-        if (student.kelas !== selectedClass) return student;
+        if (student.kelas !== currentClass) return student;
         const indexInClass = classStudents.findIndex(s => s.id === student.id);
         
         if (indexInClass !== -1 && indexInClass < batchData.length) {
@@ -246,7 +265,7 @@ export default function Grader() {
               ...student,
               nilai: {
                 ...(student.nilai || {}),
-                [selectedMapel]: {
+                [currentMapel]: {
                   score: pageResult.score,
                   details: pageResult.details,
                   image_url: pageResult.image_url
@@ -263,7 +282,7 @@ export default function Grader() {
       } else if (updatedCount < batchData.length) {
         setSyncStatus(`Berhasil menyinkronkan nilai ${updatedCount} murid. Ada halaman yang error atau jumlah murid di web lebih sedikit dari halaman PDF.`);
       } else {
-        setSyncStatus(`Sukses! Nilai telah masuk ke data ${updatedCount} murid di kelas ${selectedClass} (Mapel: ${selectedMapel}).`);
+        setSyncStatus(`Sukses! Nilai telah masuk ke data ${updatedCount} murid di kelas ${currentClass} (Mapel: ${currentMapel}).`);
       }
 
       return updatedStudents;
@@ -282,7 +301,7 @@ export default function Grader() {
           ...s,
           nilai: {
             ...(s.nilai || {}),
-            [selectedMapel]: {
+            [currentMapel]: {
               score_pg: res.score,
               score_essay: parseFloat(eScore),
               score: (parseFloat(res.score) || 0) + parseFloat(eScore),
@@ -317,7 +336,7 @@ export default function Grader() {
   }
 
   const classStudents = students
-    .filter(s => s.kelas === selectedClass)
+    .filter(s => s.kelas === currentClass)
     .sort((a, b) => parseInt(a.absen) - parseInt(b.absen));
 
   return (
@@ -332,20 +351,18 @@ export default function Grader() {
           <h3 style={{ marginBottom: '0.5rem' }}>Kelas (Target Nilai)</h3>
           <select 
             className="form-control"
-            value={selectedClass} 
+            value={currentClass} 
             onChange={(e) => setSelectedClass(e.target.value)}
           >
-            {classesList.map(cls => (
-              <option key={cls} value={cls} style={{ color: 'black' }}>{cls}</option>
-            ))}
+            {classesList.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         
-        <div style={{ flex: 1, minWidth: '150px' }}>
-          <h3 style={{ marginBottom: '0.5rem' }}>Mata Pelajaran</h3>
+        <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+          <label>Mata Pelajaran</label>
           <select 
             className="form-control"
-            value={selectedMapel} 
+            value={currentMapel} 
             onChange={(e) => setSelectedMapel(e.target.value)}
           >
             {Object.keys(mapelKeys).map(mapel => (
@@ -472,17 +489,17 @@ export default function Grader() {
                   Simpan ke Buku Nilai
                 </h3>
                 <p className="text-muted" style={{ marginBottom: '1rem' }}>
-                  Pilih nama siswa dari kelas <b>{selectedClass}</b> untuk menyimpan nilai <b>{res.score}</b> ini ke mata pelajaran <b>{selectedMapel}</b>.
+                  Pilih nama siswa dari kelas <b>{currentClass}</b> untuk menyimpan nilai <b>{res.score}</b> ini ke mata pelajaran <b>{currentMapel}</b>.
                 </p>
                 
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: '250px' }}>
                     <Select
                       options={classStudents.map(s => {
-                        const hasGrade = s.nilai && s.nilai[selectedMapel] !== undefined;
+                        const hasGrade = s.nilai && s.nilai[currentMapel] !== undefined;
                         return {
                           value: s.id,
-                          label: `${hasGrade ? '✅ ' : ''}Absen ${s.absen} - ${s.nama} ${hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}`
+                          label: `${hasGrade ? '✅ ' : ''}Absen ${s.absen} - ${s.nama} ${hasGrade ? `(Telah Dinilai: ${s.nilai[currentMapel].score})` : ''}`
                         };
                       })}
                       value={saveSelections[index] ? {
@@ -490,8 +507,8 @@ export default function Grader() {
                         label: (() => {
                           const s = classStudents.find(stu => stu.id.toString() === saveSelections[index].toString());
                           if (!s) return '';
-                          const hasGrade = s.nilai && s.nilai[selectedMapel] !== undefined;
-                          return `${hasGrade ? '✅ ' : ''}Absen ${s.absen} - ${s.nama} ${hasGrade ? `(Telah Dinilai: ${s.nilai[selectedMapel].score})` : ''}`;
+                          const hasGrade = s.nilai && s.nilai[currentMapel] !== undefined;
+                          return `${hasGrade ? '✅ ' : ''}Absen ${s.absen} - ${s.nama} ${hasGrade ? `(Telah Dinilai: ${s.nilai[currentMapel].score})` : ''}`;
                         })()
                       } : null}
                       onChange={(selectedOption) => setSaveSelections(prev => ({ ...prev, [index]: selectedOption ? selectedOption.value : '' }))}

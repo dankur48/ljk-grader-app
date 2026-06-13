@@ -28,6 +28,9 @@ export const AppProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : {};
   });
 
+  const [globalClass, setGlobalClass] = useState('');
+  const [globalMapel, setGlobalMapel] = useState('');
+
   // --- Firebase States ---
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [isLoadingDb, setIsLoadingDb] = useState(true);
@@ -141,7 +144,9 @@ export const AppProvider = ({ children }) => {
       classesList, setClassesList: updateClassesList,
       students, setStudents: updateStudents,
       mapelKeys, setMapelKeys: updateMapelKeys,
-      isDbConnected, isLoadingDb
+      isDbConnected, isLoadingDb,
+      globalClass, setGlobalClass,
+      globalMapel, setGlobalMapel
     }}>
       {children}
     </AppContext.Provider>

@@ -6,7 +6,7 @@ import { useReactToPrint } from 'react-to-print';
 import ClassReport from '../components/ClassReport';
 
 export default function Students() {
-  const { students, setStudents, classesList, setClassesList, mapelKeys } = useAppContext();
+  const { classesList, students, setStudents, mapelKeys, globalClass, setGlobalClass, globalMapel, setGlobalMapel } = useAppContext();
   
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const getFullUrl = (url) => {
@@ -16,9 +16,26 @@ export default function Students() {
     return url;
   };
 
-  // Filters
-  const [selectedClass, setSelectedClass] = useState(classesList[0] || '');
-  const [selectedMapel, setSelectedMapel] = useState(Object.keys(mapelKeys)[0] || '');
+  const [selectedClassLocal, setSelectedClassLocal] = useState('');
+  const [selectedMapelLocal, setSelectedMapelLocal] = useState('');
+
+  // Sync with global state
+  useEffect(() => {
+    if (!globalClass && classesList.length > 0) setGlobalClass(classesList[0]);
+    if (!globalMapel && Object.keys(mapelKeys).length > 0) setGlobalMapel(Object.keys(mapelKeys)[0]);
+  }, [classesList, mapelKeys]);
+
+  const currentClass = selectedClassLocal || globalClass || (classesList[0] || '');
+  const currentMapel = selectedMapelLocal || globalMapel || (Object.keys(mapelKeys)[0] || '');
+
+  const setSelectedClass = (val) => {
+    setSelectedClassLocal(val);
+    setGlobalClass(val);
+  };
+  const setSelectedMapel = (val) => {
+    setSelectedMapelLocal(val);
+    setGlobalMapel(val);
+  };
 
   // Form States
   const [absen, setAbsen] = useState('');
@@ -35,28 +52,34 @@ export default function Students() {
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `Laporan_LJK_Kelas_${selectedClass}_${selectedMapel}`,
+    documentTitle: `Laporan_LJK_Kelas_${currentClass}_${currentMapel}`,
   });
 
   const handlePrintSingle = useReactToPrint({
     contentRef: singlePrintRef,
-    documentTitle: reportModalStudent ? `Laporan_LJK_${reportModalStudent.nama}_${selectedMapel}` : 'Laporan_LJK',
+    documentTitle: reportModalStudent ? `Laporan_LJK_${reportModalStudent.nama}_${currentMapel}` : 'Laporan_LJK',
   });
 
   // Filtered Students
   const displayedStudents = students
-    .filter(s => s.kelas === selectedClass)
+    .filter(s => s.kelas === currentClass)
     .sort((a, b) => parseInt(a.absen) - parseInt(b.absen));
 
   const handleAddStudent = (e) => {
     e.preventDefault();
-    if (!absen || !nama || !selectedClass) return;
+    if (!absen || !nama || !currentClass) return;
+    
+    const exists = students.some(s => s.kelas === currentClass && (s.absen === absen || s.nama.toLowerCase() === nama.toLowerCase()));
+    if (exists) {
+      alert("Siswa dengan nomor absen atau nama ini sudah ada di kelas ini!");
+      return;
+    }
     
     const newStudent = { 
       id: Date.now(), 
       absen, 
       nama, 
-      kelas: selectedClass, 
+      kelas: currentClass, 
       nilai: {} 
     };
     setStudents([...students, newStudent]);
@@ -87,18 +110,18 @@ export default function Students() {
   };
 
   const handleDeleteAll = () => {
-    if (window.confirm(`Apakah Anda SANGAT YAKIN ingin menghapus SEMUA data murid di kelas ${selectedClass}? Tindakan ini tidak dapat dibatalkan.`)) {
-      setStudents(students.filter(s => s.kelas !== selectedClass));
+    if (confirm("Yakin ingin menghapus seluruh murid dari kelas ini? Semua data nilai akan hilang!")) {
+      setStudents(prev => prev.filter(s => s.kelas !== currentClass));
     }
   };
 
   const handleResetNilai = () => {
-    if (!selectedMapel) return;
-    if (window.confirm(`Apakah Anda yakin ingin MENGHAPUS SELURUH NILAI (PG & Essay) mata pelajaran ${selectedMapel} untuk kelas ${selectedClass}? Data scan juga akan terhapus.`)) {
+    if (!currentMapel) return;
+    if (confirm(`Yakin ingin mereset/menghapus seluruh nilai mapel ${currentMapel} di kelas ${currentClass}?`)) {
       const updated = students.map(s => {
-        if (s.kelas === selectedClass && s.nilai && s.nilai[selectedMapel]) {
+        if (s.kelas === currentClass && s.nilai && s.nilai[currentMapel]) {
           const newNilai = { ...s.nilai };
-          delete newNilai[selectedMapel];
+          delete newNilai[currentMapel];
           return { ...s, nilai: newNilai };
         }
         return s;
@@ -108,27 +131,27 @@ export default function Students() {
   };
 
   const updateScore = (studentId, field, value) => {
-    if (!selectedMapel) return;
+    if (!currentMapel) return;
     const numValue = value === '' ? 0 : parseFloat(value) || 0;
     setStudents(students.map(s => {
       if (s.id === studentId) {
-        let currentNilai = s.nilai?.[selectedMapel];
-        if (typeof currentNilai !== 'object' || currentNilai === null) {
-          currentNilai = { score_pg: parseFloat(currentNilai) || 0, score_essay: 0 };
-        }
+        let currentNilai = s.nilai?.[currentMapel] || { score_pg: 0, score_essay: 0, score_uh: 0, score_pts: 0 };
         
-        const newNilai = { ...currentNilai, [field]: numValue };
+        const newNilai = { 
+          ...(typeof currentNilai === 'object' ? currentNilai : { score_pg: parseFloat(currentNilai) || 0, score_essay: 0 }),
+          [field]: numValue 
+        };
         newNilai.score_pg = newNilai.score_pg ?? newNilai.score ?? 0;
         newNilai.score = (parseFloat(newNilai.score_pg) || 0) + (parseFloat(newNilai.score_essay) || 0);
         
-        return { ...s, nilai: { ...s.nilai, [selectedMapel]: newNilai } };
+        return { ...s, nilai: { ...s.nilai, [currentMapel]: newNilai } };
       }
       return s;
     }));
   };
 
   const downloadExcelTemplate = () => {
-    if (!selectedClass) {
+    if (!currentClass) {
       alert("Pilih kelas terlebih dahulu!");
       return;
     }
@@ -136,20 +159,20 @@ export default function Students() {
     let data;
     if (displayedStudents.length === 0) {
       data = [
-        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '', 'Nilai Akhir Rapor': '' },
-        { 'Kelas': selectedClass, 'Mata Pelajaran': selectedMapel, 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '', 'Nilai Akhir Rapor': '' }
+        { 'Kelas': currentClass, 'Mata Pelajaran': currentMapel, 'Nomor Absen': '01', 'Nama Siswa': 'Ahmad Budi', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '', 'Nilai Akhir Rapor': '' },
+        { 'Kelas': currentClass, 'Mata Pelajaran': currentMapel, 'Nomor Absen': '02', 'Nama Siswa': 'Citra Kirana', 'Nilai PAS': '', 'Nilai UH': '', 'Nilai PTS': '', 'Nilai Akhir Rapor': '' }
       ];
     } else {
       data = displayedStudents.map(s => {
-        const nilaiObj = s.nilai && selectedMapel && s.nilai[selectedMapel];
+        const nilaiObj = s.nilai && currentMapel && s.nilai[currentMapel];
         const scorePG = typeof nilaiObj === 'object' ? (nilaiObj.score_pg ?? nilaiObj.score ?? '') : '';
         const scoreEssay = typeof nilaiObj === 'object' ? (nilaiObj.score_essay ?? 0) : '';
         const scoreUH = typeof nilaiObj === 'object' ? (nilaiObj.score_uh ?? '') : '';
         const scorePTS = typeof nilaiObj === 'object' ? (nilaiObj.score_pts ?? '') : '';
         const totalScore = typeof nilaiObj === 'object' ? nilaiObj.score : (nilaiObj || '');
         return {
-          'Kelas': selectedClass,
-          'Mata Pelajaran': selectedMapel,
+          'Kelas': currentClass,
+          'Mata Pelajaran': currentMapel,
           'Nomor Absen': s.absen,
           'Nama Siswa': s.nama,
           'Nilai PAS': totalScore,
@@ -163,12 +186,12 @@ export default function Students() {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Data Murid");
-    XLSX.writeFile(wb, `Data_Murid_${selectedClass}_${selectedMapel}.xlsx`);
+    XLSX.writeFile(wb, `Template_Nilai_${currentClass}_${currentMapel}.xlsx`);
   };
 
   const handleExcelUpload = (e) => {
     const file = e.target.files[0];
-    if (!file || !selectedClass) return;
+    if (!file || !currentClass) return;
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -180,22 +203,34 @@ export default function Students() {
         const data = XLSX.utils.sheet_to_json(ws);
         
         if (data.length > 0) {
-          const overwrite = window.confirm("Apakah Anda ingin menimpa (menghapus) data murid lama di kelas ini dengan data dari Excel? \n\n[OK] = Hapus yang lama & ganti dengan yang baru.\n[Cancel] = Hanya gabungkan/perbarui data yang sudah ada.");
-          let updatedStudents = overwrite ? students.filter(s => s.kelas !== selectedClass) : [...students];
+          const expectedClass = data[0]['Kelas'] ? data[0]['Kelas'].toString().trim() : currentClass;
+          const expectedMapel = data[0]['Mata Pelajaran'] ? data[0]['Mata Pelajaran'].toString().trim() : currentMapel;
+          
+          if (expectedClass !== currentClass || expectedMapel !== currentMapel) {
+            alert(`File Excel ini untuk kelas ${expectedClass} mapel ${expectedMapel}. Harap pilih menu yang sesuai terlebih dahulu.`);
+            return;
+          }
+
+          const overwrite = window.confirm("Apakah Anda ingin menimpa (menghapus) data murid lama di kelas ini dengan data dari Excel?");
+          let updatedStudents = overwrite ? students.filter(s => s.kelas !== currentClass) : [...students];
           let addedCount = 0;
 
           data.forEach((row, index) => {
             const rowAbsen = row['Nomor Absen'] ? row['Nomor Absen'].toString() : '';
             const rowNama = row['Nama Siswa'] ? row['Nama Siswa'].toString() : '';
-            const rowNilai = row['Nilai'];
+            const totalScore = row['Nilai PAS'];
 
             if (rowAbsen && rowNama) {
-              const existingIdx = updatedStudents.findIndex(s => s.kelas === selectedClass && s.absen === rowAbsen);
+              const existingIdx = updatedStudents.findIndex(s => s.kelas === currentClass && s.absen === rowAbsen);
               
               if (existingIdx >= 0) {
                 updatedStudents[existingIdx].nama = rowNama;
-                if (rowNilai !== undefined && selectedMapel) {
-                  updatedStudents[existingIdx].nilai[selectedMapel] = rowNilai;
+                if (totalScore !== undefined && currentMapel) {
+                  updatedStudents[existingIdx].nilai[currentMapel] = { 
+                    ...(typeof updatedStudents[existingIdx].nilai[currentMapel] === 'object' ? updatedStudents[existingIdx].nilai[currentMapel] : {}),
+                    score: totalScore,
+                    score_pg: totalScore
+                  };
                 }
               } else {
                 addedCount++;
@@ -203,23 +238,20 @@ export default function Students() {
                   id: Date.now() + index,
                   absen: rowAbsen,
                   nama: rowNama,
-                  kelas: selectedClass,
-                  nilai: {}
+                  kelas: currentClass,
+                  nilai: totalScore !== undefined ? { [currentMapel]: { score: totalScore, score_pg: totalScore } } : {}
                 };
-                if (rowNilai !== undefined && selectedMapel) {
-                  newStudent.nilai[selectedMapel] = rowNilai;
-                }
                 updatedStudents.push(newStudent);
               }
             }
           });
           
           setStudents(updatedStudents);
-          alert(`Berhasil memproses Excel. ${addedCount} murid baru ditambahkan ke kelas ${selectedClass}.`);
+          alert(`Berhasil memproses Excel. ${addedCount} murid baru ditambahkan.`);
         }
       } catch (err) {
         console.error(err);
-        alert("Gagal membaca file Excel. Pastikan kolom 'Nomor Absen' dan 'Nama Siswa' ada.");
+        alert("Gagal membaca file Excel.");
       }
     };
     reader.readAsBinaryString(file);
@@ -238,7 +270,7 @@ export default function Students() {
           <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Pilih Kelas</label>
           <select 
             className="form-control"
-            value={selectedClass} 
+            value={currentClass} 
             onChange={(e) => setSelectedClass(e.target.value)}
           >
             {classesList.map(cls => (
@@ -251,7 +283,7 @@ export default function Students() {
           <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Pilih Mata Pelajaran (Nilai)</label>
           <select 
             className="form-control"
-            value={selectedMapel} 
+            value={currentMapel} 
             onChange={(e) => setSelectedMapel(e.target.value)}
           >
             {Object.keys(mapelKeys).map(mapel => (
@@ -261,9 +293,9 @@ export default function Students() {
         </div>
       </div>
 
-      {selectedClass && (
+      {currentClass && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.2rem' }}>Siswa: {selectedClass}</h2>
+          <h2 style={{ fontSize: '1.2rem' }}>Siswa: {currentClass}</h2>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button className="btn-secondary" onClick={downloadExcelTemplate} title="Download format tabel/rekap nilai">
               <Download size={18} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> Export
@@ -299,7 +331,7 @@ export default function Students() {
 
       {isAddingStudent && !editingId && (
         <div className="glass-card" style={{ marginBottom: '2rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>Tambah Murid Baru di {selectedClass}</h3>
+          <h3 style={{ marginBottom: '1rem' }}>Tambah Murid Baru di {currentClass}</h3>
           <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div className="form-group" style={{ flex: 1, minWidth: '150px', marginBottom: 0 }}>
               <label>Nomor Absen</label>
@@ -314,7 +346,7 @@ export default function Students() {
         </div>
       )}
 
-      {selectedClass ? (
+      {currentClass ? (
         <div className="glass-card table-container" style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
@@ -333,11 +365,11 @@ export default function Students() {
             <tbody>
               {displayedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Belum ada murid di kelas {selectedClass}.</td>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Belum ada murid di kelas {currentClass}.</td>
                 </tr>
               ) : (
                 displayedStudents.map((student) => {
-                  const nilaiData = selectedMapel ? (student.nilai?.[selectedMapel]) : null;
+                  const nilaiData = currentMapel ? (student.nilai?.[currentMapel]) : null;
                   const isObject = typeof nilaiData === 'object' && nilaiData !== null;
                   
                   const score_pg = isObject ? (nilaiData.score_pg ?? nilaiData.score ?? 0) : (parseFloat(nilaiData) || 0);
