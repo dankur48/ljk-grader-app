@@ -487,7 +487,7 @@ export default function Students() {
 
       {/* Komponen Laporan Tersembunyi untuk Dicetak (Satu Kelas) */}
       <div style={{ display: 'none' }}>
-        <ClassReport ref={printRef} students={students} selectedClass={selectedClass} selectedMapel={selectedMapel} />
+        <ClassReport ref={printRef} students={students} selectedClass={currentClass} selectedMapel={currentMapel} />
       </div>
 
       {reportModalStudent && (
@@ -495,7 +495,7 @@ export default function Students() {
           
           {/* Komponen Laporan Tersembunyi untuk Dicetak (Satu Siswa) dipindah ke dalam modal agar ref-nya akurat */}
           <div style={{ display: 'none' }}>
-            <ClassReport ref={singlePrintRef} students={[reportModalStudent]} selectedClass={selectedClass} selectedMapel={selectedMapel} />
+            <ClassReport ref={singlePrintRef} students={[reportModalStudent]} selectedClass={currentClass} selectedMapel={currentMapel} />
           </div>
 
           <div className="glass-card" style={{ background: '#1e1e2d', width: '100%', maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
