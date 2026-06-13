@@ -115,6 +115,19 @@ export const AppProvider = ({ children }) => {
     }
   }, [user]);
 
+  // --- Cross-tab Synchronization (Fallback for LocalStorage) ---
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (!isDbConnected) {
+        if (e.key === 'autograder_classes' && e.newValue) setClassesList(JSON.parse(e.newValue));
+        if (e.key === 'autograder_students' && e.newValue) setStudents(JSON.parse(e.newValue));
+        if (e.key === 'autograder_mapelKeys' && e.newValue) setMapelKeys(JSON.parse(e.newValue));
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [isDbConnected]);
+
   // --- Actions ---
   const login = (email, password) => {
     setUser({ name: "Guru Jombang", email });
