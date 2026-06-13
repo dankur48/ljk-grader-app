@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Plus, Edit2, Trash2, Check, X, Download, Upload, Printer } from 'lucide-react';
 import * as XLSX from 'xlsx';
